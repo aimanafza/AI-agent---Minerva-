@@ -108,6 +108,23 @@ if (env.GITHUB_TOKEN && env.GITHUB_REPO) {
   console.log("  (skipped — no token/repo)");
 }
 
+console.log("\n[notion]");
+if (env.NOTION_API_KEY && env.NOTION_PAGE_ID) {
+  try {
+    const res = await fetch(
+      `https://api.notion.com/v1/blocks/${env.NOTION_PAGE_ID}/children?page_size=5`,
+      { headers: { Authorization: `Bearer ${env.NOTION_API_KEY}`, "Notion-Version": "2022-06-28" } }
+    );
+    if (!res.ok) throw new Error(`${res.status} — is the page connected to the integration? (page ••• menu -> Connections)`);
+    const data = await res.json();
+    ok("cycle page", `${data.results?.length ?? 0} blocks readable`);
+  } catch (e) {
+    fail("notion", e.message);
+  }
+} else {
+  console.log("  (optional — not configured)");
+}
+
 console.log(failures ? `\n${failures} FAILURE(S) — see above\n` : "\nALL GREEN — ready for end-to-end\n");
 process.exit(failures ? 1 : 0);
 

@@ -33,7 +33,7 @@ Slack (#bugs) ──> orchestrator (Claude)
 | Slack | Report intake, replies, escalations | Web API (poll + post) |
 | Linear | Duplicate corpus, ticket creation | GraphQL API |
 | GitHub | Code search, CODEOWNERS, commit history | REST API |
-| _(4th: Gmail or Sentry — TODO if added)_ | Alternate intake | — |
+| Notion | Current-cycle priorities: bugs in the cycle's focus area get weighted up, deferred areas down, with the page cited | REST API |
 
 ## How to run
 
