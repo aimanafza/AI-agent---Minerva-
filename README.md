@@ -47,17 +47,24 @@ Post a bug report in the configured Slack channel and watch the thread.
 
 ## Reliability testing
 
-We wrote N labeled bug reports (`eval/reports.json`) against a seeded Linear workspace and GitHub repo — each with ground-truth severity, owner, and duplicate target decided by us in advance. `npm run eval` runs the identical agent over all of them and scores each field.
+We wrote 24 labeled bug reports (`eval/reports.json`) against our live Linear workspace, GitHub repo, and Notion handbook — each with ground-truth severity, owner, and duplicate target decided in advance from CODEOWNERS and the seeded tickets. `npm run eval` runs the *identical* agent (same prompt, same tools, no test-only code paths) over all of them and scores each field. The set deliberately includes paraphrased duplicates, reports that are too thin to file (correct answer: ask the reporter), bugs in code nobody owns (correct answer: triage queue), and a near-duplicate trap the handbook warns about (a generic login complaint that must NOT match the existing Safari issue).
+
+Final run (24 reports):
 
 | Metric | Result |
 |---|---|
-| Severity accuracy | TODO |
-| Owner accuracy | TODO |
-| Duplicate precision | TODO |
-| Duplicate recall | TODO |
-| Tickets filed without evidence | TODO (target: 0, enforced by code) |
+| Severity accuracy | 21/24 (88%) |
+| Owner accuracy | 22/24 (92%) |
+| Duplicate precision | 100% (9/9 flagged were real) |
+| Duplicate recall | 100% (9/9 real dupes found) |
+| Thin reports -> asked instead of guessed | 3/3 |
+| Tickets written without human approval | 0 (enforced by code) |
 
-We also verified the guardrails directly: reports with no code signal route to the triage queue, and under-specified reports trigger a follow-up question rather than a guessed severity.
+The eval earned its keep during the build: our first run scored 54% on severity and exposed a real bug — the `UNGROUNDED_SEVERITY` guardrail was silently capping urgent severities (including a P0 data-loss case) to P2 whenever the model paraphrased its evidence instead of quoting the report. We fixed both sides of the contract (the prompt must quote; the guardrail accepts a verbatim quoted span) and severity went 54% -> 79% -> 88% across runs. The remaining misses are two over-cautious follow-up questions on genuinely ambiguous reports and one duplicate-severity alignment.
+
+Guardrails are unit-tested separately (`npm test`, 12 tests): unevidenced assignees route to the triage queue, duplicates must exist among retrieved tickets, hallucinated file paths are dropped, and policy citations require an actual Notion read in the tool trace. Note: reruns vary a few points due to LLM nondeterminism, and expected owners/duplicates track the live workspace (CODEOWNERS and existing tickets), so the answer key must be kept in sync with the world.
+
+We also verified the full write path live: reports with no code signal route to the triage queue, under-specified reports trigger a follow-up question rather than a guessed severity, and rejected proposals leave nothing behind in Linear.
 
 ## Demo
 
