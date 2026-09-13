@@ -122,3 +122,13 @@ npm test              # guardrail unit tests (no network)
 `npm test` checks the guardrails in isolation: no owner without retrieved `CODEOWNERS` or commit logins, no invented duplicate, no phantom path, urgent severity must be quoted from the report, cycle/priority claims need a real Notion read. Target for "tickets filed without evidence" is 0 — that is enforced in code, not in the prompt.
 
 We also smoke-tested each integration (`npm run smoke`) and ran the live Slack loop: intake, follow-up, approve, reject, in-thread edits, Linear-originated tickets, `!sprint` lock, and watcher escalations.
+
+## Demo
+
+2-minute demo video: **[LINK — paste before submitting]**
+
+## Team
+
+- Nazym Zhiyengaliyeva — nazym@uni.minerva.edu (GitHub: Nazym-MU)
+- Aiman Afzal — afzal@uni.minerva.edu (GitHub: aimanafza)
+- Arina Alibayeva — arina@uni.minerva.edu (GitHub: arinaalibayeva)
