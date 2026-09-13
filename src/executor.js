@@ -1,6 +1,7 @@
 import { config } from "./config.js";
 import * as linear from "./linear.js";
 import * as slack from "./slack.js";
+import { filedMessage, duplicateNotedMessage } from "./voice.js";
 
 // Takes a validated triage decision and performs the writes:
 // create the Linear ticket, then report back in the Slack thread.
@@ -44,10 +45,8 @@ export async function execute(decision, { thread_ts, permalink, guardrailNotes }
   });
 
   const lines = [
-    `:white_check_mark: Filed as *<${issue.url}|${issue.identifier}>* — ${decision.severity}, assigned to *${assigneeLabel}*.`,
-    decision.duplicate_of
-      ? `:link: Possible duplicate of *${decision.duplicate_of}* (${decision.duplicate_confidence} confidence) — noted in the ticket.`
-      : null,
+    filedMessage(issue, decision, assigneeLabel),
+    decision.duplicate_of ? duplicateNotedMessage(decision) : null,
     ...(guardrailNotes || []),
   ].filter(Boolean);
 

@@ -1,12 +1,17 @@
 import { config } from "./config.js";
 import * as linear from "./linear.js";
 import * as slack from "./slack.js";
+import { loadWatcherState, saveWatcherState } from "./state.js";
+import { escalationMessage, quietWeekMessage, componentHealthMessage } from "./voice.js";
 
 // After filing, keep watching:
 // 1. A P0/P1 that sits unassigned or unstarted past the threshold gets escalated in Slack.
 // 2. A component (label) producing too many bugs in 7 days gets a health ping to the PM.
-const escalated = new Set();
-const heatPinged = new Set();
+// Persisted (.state.json) so a restart doesn't re-fire every escalation/ping.
+const persistedWatcher = loadWatcherState();
+const escalated = new Set(persistedWatcher.escalated);
+const heatPinged = new Set(persistedWatcher.heatPinged);
+const persist = () => saveWatcherState({ escalated, heatPinged });
 
 export async function sweep() {
   const issues = await linear.recentIssues(100);
@@ -20,9 +25,8 @@ export async function sweep() {
     const stale = !i.assignee || i.stateType === "triage" || i.stateType === "backlog" || i.stateType === "unstarted";
     if (stale && ageMin > config.escalateAfterMin && !escalated.has(i.identifier)) {
       escalated.add(i.identifier);
-      await slack.postMessage(
-        `:rotating_light: *${i.identifier}* is P1 and has been ${i.assignee ? "untouched" : "unassigned"} for ${Math.round(ageMin)} min: "${i.title}". Escalating — someone needs to pick this up.`
-      );
+      persist();
+      await slack.postMessage(escalationMessage(i.identifier, i.title, Boolean(i.assignee), ageMin));
     }
   }
 
@@ -44,20 +48,20 @@ export async function healthReport(issues = null, force = true) {
   const hot = entries.filter(([label, count]) => (force ? count > 0 : count >= config.heatThreshold && !heatPinged.has(label)));
 
   if (force && !hot.length) {
-    await slack.postMessage(":thermometer: Component health: no bugs filed in the last 7 days. Quiet week.");
+    await slack.postMessage(quietWeekMessage());
     return;
   }
   for (const [label, count] of hot.slice(0, force ? 3 : hot.length)) {
-    if (!force) heatPinged.add(label);
+    if (!force) {
+      heatPinged.add(label);
+      persist();
+    }
     const assignees = issues
       .filter((i) => i.labels.includes(label) && i.assignee)
       .map((i) => i.assignee);
     const top = mostCommon(assignees);
-    await slack.postMessage(
-      `:thermometer: Component health: *${label}* has produced ${count} bug${count === 1 ? "" : "s"} this week` +
-        (top ? `, ${assignees.filter((a) => a === top).length} assigned to ${top}` : "") +
-        (count >= config.heatThreshold ? `. Might be worth a look beyond individual tickets.` : ".")
-    );
+    const topCount = top ? assignees.filter((a) => a === top).length : 0;
+    await slack.postMessage(componentHealthMessage(label, count, top, topCount, count >= config.heatThreshold));
   }
 }
 

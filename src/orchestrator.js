@@ -4,6 +4,7 @@ import * as linear from "./linear.js";
 import * as github from "./github.js";
 import * as notion from "./notion.js";
 import { enforceGuardrails as enforceGuardrailsPure, buildEvidence } from "./guardrails.js";
+import { VOICE_RULES } from "./voice.js";
 
 const anthropic = new Anthropic({ apiKey: config.anthropicKey });
 
@@ -75,13 +76,13 @@ const TOOLS = [
     input_schema: {
       type: "object",
       properties: {
-        title: { type: "string", description: "Clear, specific ticket title (symptom + surface), e.g. 'Checkout: card form rejects valid Amex numbers'" },
-        summary: { type: "string", description: "2-4 sentence description for the ticket body" },
+        title: { type: "string", description: "one line, lowercase except proper nouns and paths. symptom plus surface." },
+        summary: { type: "string", description: "2-3 short sentences. what breaks, where, what the user sees." },
         severity: { type: "string", enum: ["P0", "P1", "P2", "P3"] },
-        severity_evidence: { type: "string", description: "Quote from the report supporting severity: user count, money involved, workaround existence" },
+        severity_evidence: { type: "string", description: "max 2 sentences. for P0/P1 start with a verbatim quote from the report in double quotes, then one clause of reasoning. lowercase." },
         affected_paths: { type: "array", items: { type: "string" }, description: "Repo file paths this bug points to, from your code search" },
         assignee_github: { type: ["string", "null"], description: "GitHub login of the proposed owner, or null for triage queue" },
-        assignee_evidence: { type: "string", description: "Why this person: CODEOWNERS match and/or recent commits on affected paths. Empty string if assignee is null." },
+        assignee_evidence: { type: "string", description: "max 2 sentences. name the CODEOWNERS line or the commits you retrieved. no restating the whole file." },
         triage_queue_reason: { type: ["string", "null"], description: "If assignee is null: why no owner could be determined" },
         duplicate_of: { type: ["string", "null"], description: "Linear identifier (e.g. ENG-42) of the likely duplicate, or null" },
         duplicate_confidence: { type: "string", enum: ["high", "medium", "none"] },
@@ -103,7 +104,9 @@ Rules — these are hard constraints:
 2. NEVER invent severity. Severity comes from the report: user impact, money involved, availability of a workaround. Rubric: P0 = outage or data loss (records gone, nobody can sign in), all/most users. P1 = core flow broken for a whole platform/browser family, money involved, or no workaround. P2 = feature malfunctions but a usable workaround exists. P3 = cosmetic, stale-view, or minor presentation issues that don't block anything. For P0/P1, severity_evidence MUST begin with a verbatim quote from the report inside double quotes ("..."), then your rationale — an urgent severity without a direct quote will be downgraded. If the report is too thin to place it, use ask_reporter — one specific question.
 3. Check duplicates by meaning. Read the recent Linear issues and compare the underlying problem, not the words. Different words for the same failure = duplicate (high). Same area but different failure = not a duplicate (mention it as related in summary instead). When you flag a high-confidence duplicate, align severity with the existing ticket's priority (urgent=P1, high=P2, medium=P3) unless the new report shows materially worse impact.
 4. Investigate before deciding: typically linear_recent_issues first (cheap duplicate check), then github_find_files with component/feature words from the report (e.g. 'avatar', 'upload', 'swipe', 'waitlist') — it matches file paths, not file contents — then codeowners/commits on the paths you find. Consult the Notion handbook when deciding severity: notion_search_pages to find the current cycle/priorities page, notion_read_page to read it — a bug in the current cycle's focus area gets weighted up, an explicitly deferred area down, and cite the page title in severity_evidence when it changed your call. Don't read the whole handbook; one or two relevant pages is enough. Keep it to a few focused calls.
-5. End with exactly one terminal call: submit_triage or ask_reporter.`;
+5. End with exactly one terminal call: submit_triage or ask_reporter.
+
+${VOICE_RULES}`;
 
 async function runTool(name, input) {
   switch (name) {

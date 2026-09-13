@@ -5,6 +5,7 @@ import { execute } from "./executor.js";
 import { sweep, healthReport } from "./watcher.js";
 
 import { loadState, saveState } from "./state.js";
+import { onItMessage, followUpQuestionMessage, proposalMessage, rejectedMessage, triageFailedMessage } from "./voice.js";
 
 // Pending state survives restarts (.state.json) — a restart must not orphan
 // open proposal threads.
@@ -21,28 +22,10 @@ const REJECT_TEXT = /^\s*(reject(ed)?|no|nope|deny|denied|drop(ped)?|don'?t|❌|
 const APPROVE_REACTIONS = new Set(["white_check_mark", "heavy_check_mark", "ballot_box_with_check", "+1", "thumbsup", "ok_hand", "raised_hands"]);
 const REJECT_REACTIONS = new Set(["x", "-1", "thumbsdown", "no_entry", "no_entry_sign"]);
 
-function formatProposal(decision, notes) {
-  return [
-    `:clipboard: *Triage proposal* — reply *approve* to file, or *reject <reason>*.`,
-    `*${decision.title}*`,
-    `• Severity: *${decision.severity}* — ${decision.severity_evidence}`,
-    decision.assignee_github
-      ? `• Owner: *@${decision.assignee_github}* — ${decision.assignee_evidence}`
-      : `• Owner: *triage queue* — ${decision.triage_queue_reason}`,
-    decision.duplicate_of
-      ? `• Possible duplicate of *${decision.duplicate_of}* (${decision.duplicate_confidence} confidence)`
-      : null,
-    decision.labels?.length ? `• Labels: ${decision.labels.join(", ")}` : null,
-    ...(notes || []),
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
 async function handleReport(msg, botUserId) {
   const thread_ts = msg.thread_ts || msg.ts;
   console.log(`\n--- New report: ${msg.text.slice(0, 80)}`);
-  await slack.postMessage(":mag: On it — checking for duplicates and finding an owner…", thread_ts);
+  await slack.postMessage(onItMessage(), thread_ts);
 
   // If this is a reply in a thread we asked a question in, feed the whole thread back.
   let threadContext = [];
@@ -58,7 +41,7 @@ async function handleReport(msg, botUserId) {
   if (result.kind === "question") {
     pendingQuestions.add(thread_ts);
     persist();
-    await slack.postMessage(`:question: Before I file this: ${result.question}`, thread_ts);
+    await slack.postMessage(followUpQuestionMessage(result.question), thread_ts);
     console.log(`Asked follow-up: ${result.question}`);
     return;
   }
@@ -66,7 +49,7 @@ async function handleReport(msg, botUserId) {
   const { decision, notes } = await enforceGuardrails(result.decision, result.trace, msg.text);
 
   if (config.requireApproval) {
-    const posted = await slack.postMessage(formatProposal(decision, notes), thread_ts);
+    const posted = await slack.postMessage(proposalMessage(decision, notes), thread_ts);
     pendingApprovals.set(thread_ts, { decision, notes, proposalTs: posted.ts });
     persist();
     console.log(`Proposal posted, awaiting approval: ${decision.title}`);
@@ -99,7 +82,7 @@ async function main() {
         }
         await handleReport(msg, botUserId).catch(async (e) => {
           console.error("triage failed:", e);
-          await slack.postMessage(`:warning: Triage failed: ${e.message}`, msg.thread_ts || msg.ts);
+          await slack.postMessage(triageFailedMessage(e.message), msg.thread_ts || msg.ts);
         });
       }
       // Poll threads awaiting approval: a reply (approve/yes/lgtm/…) or a
@@ -134,7 +117,7 @@ async function main() {
         } else if (verdict === "reject") {
           pendingApprovals.delete(t);
           persist();
-          await slack.postMessage(":x: Understood — dropped, nothing was filed. The decision and your reason are logged.", t);
+          await slack.postMessage(rejectedMessage(), t);
           console.log(`Rejected: ${pending.decision.title}`);
         }
         // anything else in the thread: keep waiting
