@@ -1,0 +1,15 @@
+{
+  "name": "triage-agent",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "eval": "node eval/run.js",
+    "seed": "node scripts/seed-linear.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "dotenv": "^16.4.0"
+  }
+}

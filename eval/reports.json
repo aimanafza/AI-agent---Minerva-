@@ -1,0 +1,27 @@
+[
+  {
+    "id": "R01",
+    "text": "hey the login button does nothing when i click it on safari, works fine in chrome. a customer emailed about it too",
+    "expected": { "severity": "P1", "assignee_github": "priya-gh", "duplicate_of": "ENG-12", "should_ask": false }
+  },
+  {
+    "id": "R02",
+    "text": "checkout page shows $NaN for the total when the cart has a discounted item. saw it myself just now, money-facing so flagging",
+    "expected": { "severity": "P1", "assignee_github": "aiman-gh", "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R03",
+    "text": "the settings page looks slightly off",
+    "expected": { "severity": null, "assignee_github": null, "duplicate_of": null, "should_ask": true }
+  },
+  {
+    "id": "R04",
+    "text": "typo on the pricing page: 'recieve' should be 'receive'",
+    "expected": { "severity": "P3", "assignee_github": null, "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R05",
+    "text": "auth is broken on webkit browsers — token refresh 401s and users get logged out. affects everyone on iOS",
+    "expected": { "severity": "P1", "assignee_github": "priya-gh", "duplicate_of": "ENG-12", "should_ask": false }
+  }
+]
