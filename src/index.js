@@ -87,7 +87,7 @@ async function handleLinearTicket(issue) {
     return;
   }
   const { decision, notes } = await enforceGuardrails(result.decision, result.trace, report);
-  const posted = await slack.postMessage(formatProposal(decision, notes), thread_ts);
+  const posted = await slack.postMessage(proposalMessage(decision, notes), thread_ts);
   pendingApprovals.set(thread_ts, {
     decision,
     notes,
