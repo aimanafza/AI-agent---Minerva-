@@ -42,12 +42,16 @@ In `.env`: `ESCALATE_AFTER_MIN=2`, `WATCH_INTERVAL_SEC=30`. File a P1 (via a rea
 
 **Exit:** one escalation, no spam.
 
+## Step 4b — Approval flow (20 min)
+With `REQUIRE_APPROVAL=true` (default), the agent posts a triage *proposal* in the thread and waits. Reply `approve` → it files and confirms. Reply `reject too vague` → it drops and acknowledges. Test both paths; this is the "PM approves" beat from the team flow, and it needs no front-end.
+
 ## Step 6 — Demo choreography (do at ~2 PM with everyone)
-Script the four beats, in this order, with pre-written report texts:
-1. Clean P1: report mentioning checkout + money → filed, prioritized, assigned with owner rationale.
-2. Duplicate: paraphrase of a seeded ticket ("login dead on Safari" vs seeded "Auth fails on WebKit") → dupe flagged.
-3. Thin report → follow-up question → answer → filed.
-4. Escalation: the unassigned P1 from beat 1 fires the :rotating_light: two minutes later (start the clock during beats 2–3 so it lands on cue).
+Script the five beats, in this order, with pre-written QA-style report texts about the wardrobe app:
+1. Clean P1: report about a broken money/core flow → proposal with owner rationale → PM replies `approve` → filed and assigned.
+2. Duplicate: paraphrase of the seeded ticket ("login dead on Safari" vs seeded "Auth fails on WebKit") → dupe flagged in the proposal.
+3. Thin report → follow-up question → answer → proposal → approve.
+4. Rejection: PM replies `reject` on one proposal — shows the human is really in control.
+5. Escalation: the approved-but-unassigned P1 from beat 1 fires the :rotating_light: two minutes later (start the clock during beats 2–4 so it lands on cue).
 
 **Exit:** you can run all four beats in under 3 wall-clock minutes, twice in a row.
 

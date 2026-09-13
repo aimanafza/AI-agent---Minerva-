@@ -2,7 +2,7 @@
 
 An AI agent that turns raw bug reports into correctly filed, correctly owned Linear tickets — and keeps watching them afterward.
 
-A bug report lands in Slack. The agent checks Linear for semantic duplicates ("login button broken on Safari" matches "Auth fails on WebKit"), derives severity from evidence in the report (users affected, money involved, workaround or not), then finds the owner from the code itself: it searches the GitHub repo for the affected files, reads CODEOWNERS, and checks who actually committed to those paths recently. It files the ticket in Linear and reports back in the thread. Afterward it watches: a P1 that sits unassigned gets escalated, and a component generating repeated bugs gets flagged to the PM.
+A bug report lands in Slack (our demo: an internal QA team reporting bugs on a deployed AI wardrobe app). The agent checks Linear for semantic duplicates ("login button broken on Safari" matches "Auth fails on WebKit"), derives severity from evidence in the report (users affected, money involved, workaround or not), then finds the owner from the code itself: it searches the GitHub repo for the affected files, reads CODEOWNERS, and checks who actually committed to those paths recently. It posts a triage **proposal** in the thread — title, severity, owner, duplicates, each with its evidence — and waits for the PM to reply `approve` (or `reject`). Only then does it file the Linear ticket. Afterward it watches: a P1 that sits unassigned gets escalated, and a component generating repeated bugs gets flagged to the PM. The PM's entire job becomes reading one message and typing one word.
 
 **Guardrails (enforced in code, not prompts):** the agent never assigns without code-level evidence — no evidence means triage queue, with the reason stated. It never invents severity from a thin report — it asks the reporter one follow-up question in the thread instead.
 
@@ -20,7 +20,8 @@ Slack (#bugs) ──> orchestrator (Claude)
                           │
                   guardrail validation (code)
                           │
-              Linear ticket + Slack thread reply
+              proposal in Slack thread ──"approve"──> Linear ticket + confirmation
+                          │                └─"reject"──> dropped, logged
                           │
                   watcher: P1 escalation + component-health pings
 ```

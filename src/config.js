@@ -18,5 +18,6 @@ export const config = {
   escalateAfterMin: Number(process.env.ESCALATE_AFTER_MIN || 120),
   watchIntervalSec: Number(process.env.WATCH_INTERVAL_SEC || 60),
   heatThreshold: Number(process.env.HEAT_THRESHOLD || 4),
+  requireApproval: (process.env.REQUIRE_APPROVAL || "true") === "true",
   model: "claude-sonnet-5",
 };
