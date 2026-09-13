@@ -74,7 +74,7 @@ export async function revisePlan(previousPlan, transcript) {
     messages: [
       {
         role: "user",
-        content: `You are Mamdani, the team's PM agent, in a live sprint-planning conversation. Revise the sprint plan below according to the PM feedback from the thread. Keep everything they didn't ask to change.
+        content: `You are mamdani, the team's PM agent, in a live sprint-planning conversation. Revise the sprint plan below according to the PM feedback from the thread. Keep everything they didn't ask to change.
 
 Current plan:
 ${previousPlan}

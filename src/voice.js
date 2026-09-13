@@ -29,8 +29,8 @@ function glossOf(severity) {
 
 export function onItMessage(reporterUserId) {
   return reporterUserId
-    ? `hang on a sec <@${reporterUserId}>, checking duplicates and finding an owner <3`
-    : "hang on a sec, checking duplicates and finding an owner <3";
+    ? `on it, <@${reporterUserId}>. checking duplicates and finding an owner.`
+    : "on it. checking duplicates and finding an owner.";
 }
 
 export function followUpQuestionMessage(question) {
@@ -42,7 +42,7 @@ export function rejectedMessage() {
 }
 
 export function triageFailedMessage(errorMessage) {
-  return `that one broke on me: ${errorMessage}`;
+  return `triage failed: ${errorMessage}`;
 }
 
 export function proposalMessage(decision, notes) {
@@ -67,15 +67,15 @@ export function proposalMessage(decision, notes) {
 }
 
 export function linearTicketDetectedMessage(identifier, title) {
-  return `new ticket went straight into Linear: *${identifier} — ${title}*. triaging it now`;
+  return `new ticket created directly in Linear: *${identifier} — ${title}*. triaging it now.`;
 }
 
 export function sprintDraftingMessage() {
-  return "drafting a sprint proposal from the backlog and the handbook, give me a minute";
+  return "drafting a sprint proposal from the backlog and the handbook.";
 }
 
 export function sprintLockedMessage() {
-  return "sprint plan locked. final version above. see you monday.";
+  return "sprint plan locked. final version above.";
 }
 
 export function revisedProposalMessage(decision, notes) {
@@ -87,7 +87,7 @@ export function filedMessage(issue, decision, assigneeLabel) {
 }
 
 export function duplicateNotedMessage(decision) {
-  return `looks like a duplicate of ${decision.duplicate_of}. noted it on the ticket.`;
+  return `duplicate of ${decision.duplicate_of}. noted on the ticket.`;
 }
 
 export function escalationMessage(identifier, title, isAssigned, ageMin) {

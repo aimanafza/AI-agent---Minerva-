@@ -15,7 +15,7 @@ let linearSeen = persistedWatcher.linearSeen === null ? null : new Set(persisted
 const persist = () => saveWatcherState({ escalated, heatPinged, linearSeen });
 
 // A ticket created directly in Linear that nobody triaged: no assignee AND no
-// priority. (Mamdani's own tickets always get a priority, so they're excluded.)
+// priority. (mamdani's own tickets always get a priority, so they're excluded.)
 function isUntriaged(i) {
   return i.priority === 0 && !i.assignee && i.stateType !== "completed" && i.stateType !== "canceled";
 }

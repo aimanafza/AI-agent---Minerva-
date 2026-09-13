@@ -39,7 +39,7 @@ function pmMention(decision) {
     .map((l) => config.pmMap[l.toLowerCase()])
     .find(Boolean);
   const ids = byLabel ? [byLabel] : [].concat(config.pmMap.default || []);
-  return ids.length ? ids.map((id) => `<@${id}>`).join(" ") + " your call on this one\n" : "";
+  return ids.length ? ids.map((id) => `<@${id}>`).join(" ") + " for review\n" : "";
 }
 
 function reactionVerdict(reactions) {
