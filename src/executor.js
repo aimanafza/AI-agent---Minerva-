@@ -11,13 +11,20 @@ export async function execute(decision, { thread_ts, permalink, guardrailNotes, 
   let assigneeLabel = "triage queue";
 
   if (decision.assignee_github) {
-    const email = config.userMap[decision.assignee_github];
+    // Tolerant lookup: strip a leading @, match case-insensitively, and fall
+    // back to substring matching so "nazym" still finds "Nazym-MU".
+    const raw = decision.assignee_github.replace(/^@/, "").toLowerCase();
+    const key = Object.keys(config.userMap).find(
+      (k) => k.toLowerCase() === raw || k.toLowerCase().includes(raw) || raw.includes(k.toLowerCase())
+    );
+    const email = key ? config.userMap[key] : null;
     const user = email ? await linear.findUserByEmail(email) : null;
     if (user) {
       assigneeId = user.id;
       assigneeLabel = user.name;
     } else {
       assigneeLabel = `triage queue (no Linear user mapped for GitHub @${decision.assignee_github})`;
+      console.log(`assignee mapping failed: "${decision.assignee_github}" not in USER_MAP [${Object.keys(config.userMap).join(", ")}]`);
     }
   }
 

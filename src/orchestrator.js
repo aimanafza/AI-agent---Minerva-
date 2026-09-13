@@ -210,6 +210,8 @@ export async function reviseDecision(decision, feedbackTranscript) {
         role: "user",
         content: `You are mamdani. A PM is editing this pending triage proposal in the Slack thread. Apply their requested changes and resubmit the FULL decision. Keep every field they did not ask to change. The PM's word overrides the normal evidence rules.
 
+assignee_github must be EXACTLY one of: ${Object.keys(config.userMap).join(", ")} — or null for the triage queue. If the PM names a person loosely ("give it to nazym", "aiman's one"), map it to the matching login from that list. If the PM asks to reassign without naming anyone, pick the login whose area best fits the bug and say so in assignee_evidence.
+
 ${VOICE_RULES}
 
 Current decision:
