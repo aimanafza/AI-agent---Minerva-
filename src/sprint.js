@@ -46,7 +46,7 @@ export async function sprintProposal() {
 
   const resp = await anthropic.messages.create({
     model: config.model,
-    max_tokens: 4000,
+    max_tokens: 12000,
     messages: [
       {
         role: "user",
@@ -57,7 +57,7 @@ ${backlog}
 
 Team handbook (policy, ownership, product):${handbook || "\n(no handbook access — plan from the backlog alone)"}
 
-Engineers: Arina (auth, trips, packing), Nazym (wardrobe, uploads, extension), Aiman (styling, looks, avatar, AI).
+Engineers: Nazym (wardrobe, uploads, extension, auth, waitlist), Aiman (styling, looks, avatar, AI, trips, packing). Arina is the PM — she approves plans and NEVER takes tickets.
 
 ${cycleLine}
 ${projectLines}
@@ -73,7 +73,9 @@ End with: "react with a checkmark to lock this sprint. on lock I move these tick
     ],
   });
 
-  return resp.content.find((b) => b.type === "text")?.text || "(no proposal generated)";
+  const text = resp.content.find((b) => b.type === "text")?.text;
+  if (!text) throw new Error(`empty response (stop: ${resp.stop_reason}) — token budget too small?`);
+  return text;
 }
 
 // On lock: turn the final plan text into structured assignments (forced tool
@@ -113,7 +115,7 @@ function linearUserEmailFor(githubLogin) {
 export async function applySprintPlan(finalPlanText) {
   const resp = await anthropic.messages.create({
     model: config.model,
-    max_tokens: 3000,
+    max_tokens: 8000,
     tools: [COMMIT_TOOL],
     tool_choice: { type: "tool", name: "commit_sprint" },
     messages: [
@@ -170,7 +172,7 @@ export async function applySprintPlan(finalPlanText) {
 export async function revisePlan(previousPlan, transcript) {
   const resp = await anthropic.messages.create({
     model: config.model,
-    max_tokens: 4000,
+    max_tokens: 12000,
     messages: [
       {
         role: "user",
