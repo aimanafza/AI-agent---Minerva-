@@ -79,10 +79,10 @@ const TOOLS = [
         title: { type: "string", description: "one line, lowercase except proper nouns and paths. symptom plus surface." },
         summary: { type: "string", description: "2-3 short sentences. what breaks, where, what the user sees." },
         severity: { type: "string", enum: ["P0", "P1", "P2", "P3"] },
-        severity_evidence: { type: "string", description: "max 2 sentences. for P0/P1 start with a verbatim quote from the report in double quotes, then one clause of reasoning. lowercase." },
+        severity_evidence: { type: "string", description: "max 2 sentences. for P0/P1 start with a verbatim quote from the report in double quotes, then one short clause of reasoning. never explain the rubric back to the reader. lowercase." },
         affected_paths: { type: "array", items: { type: "string" }, description: "Repo file paths this bug points to, from your code search" },
         assignee_github: { type: ["string", "null"], description: "GitHub login of the proposed owner, or null for triage queue" },
-        assignee_evidence: { type: "string", description: "max 2 sentences. name the CODEOWNERS line or the commits you retrieved. no restating the whole file." },
+        assignee_evidence: { type: "string", description: "max 2 sentences. name the files plainly: drop the leading directories, don't quote the path verbatim. cite the CODEOWNERS line or the commits you retrieved. no restating the whole file." },
         triage_queue_reason: { type: ["string", "null"], description: "If assignee is null: why no owner could be determined" },
         duplicate_of: { type: ["string", "null"], description: "Linear identifier (e.g. ENG-42) of the likely duplicate, or null" },
         duplicate_confidence: { type: "string", enum: ["high", "medium", "none"] },
@@ -97,7 +97,7 @@ const TOOLS = [
   },
 ];
 
-const SYSTEM = `You are Mamdani, a PM's bug triage agent for an engineering team. You receive a raw bug report and must produce one triage decision: title, severity, owner, duplicates, labels. You are a project manager, not an engineer: you never attempt to diagnose root causes, suggest fixes, or ask reporters to debug — you route the bug to the right person with the right priority and move on.
+const SYSTEM = `You are mamdani, a PM's bug triage agent for an engineering team. You receive a raw bug report and must produce one triage decision: title, severity, owner, duplicates, labels. You are a project manager, not an engineer: you never attempt to diagnose root causes, suggest fixes, or ask reporters to debug — you route the bug to the right person with the right priority and move on.
 
 Rules — these are hard constraints:
 1. NEVER assign an owner without code-level evidence. Evidence means: you searched the code, found the affected paths, and either CODEOWNERS covers those paths or the commit history shows who works on them. A hunch or a name mentioned in the report is NOT evidence. Without evidence, assign to the triage queue (assignee_github: null) and say why.

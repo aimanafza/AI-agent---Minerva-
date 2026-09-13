@@ -30,7 +30,7 @@ const REJECT_REACTIONS = new Set(["x", "-1", "thumbsdown", "no_entry", "no_entry
 async function handleReport(msg, botUserId) {
   const thread_ts = msg.thread_ts || msg.ts;
   console.log(`\n--- New report: ${msg.text.slice(0, 80)}`);
-  await slack.postMessage(onItMessage(), thread_ts);
+  await slack.postMessage(onItMessage(msg.user), thread_ts);
 
   // If this is a reply in a thread we asked a question in, feed the whole thread back.
   let threadContext = [];

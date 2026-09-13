@@ -21,7 +21,7 @@ If dataset slips past 1:30, cut to 15 reports — a small honest table beats non
 ### 3. Notion hookup (owner: Person 1, as soon as token arrives)
 Token in `.env` → restart → `npm run smoke` green → test: post an AI-styling bug,
 proposal should say "P3 — deferred this cycle per the cycle page."
-NOTE for whoever is building the Notion page: Mamdani reads ONE page (NOTION_PAGE_ID),
+NOTE for whoever is building the Notion page: mamdani reads ONE page (NOTION_PAGE_ID),
 top-level blocks only — headings, bullets, paragraphs. Sub-pages and databases are NOT
 fetched. Make it pretty for the demo, but every rule the agent should know must be
 plain text on that one page. If you use a new page instead of the draft: connect the

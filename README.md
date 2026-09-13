@@ -1,6 +1,6 @@
-# Mamdani
+# mamdani
 
-Mamdani is an AI triage agent that turns raw bug reports into correctly filed, correctly owned Linear tickets — and keeps watching them afterward.
+mamdani is an AI triage agent that turns raw bug reports into correctly filed, correctly owned Linear tickets — and keeps watching them afterward.
 
 A bug report lands in Slack (our demo: an internal QA team reporting bugs on a deployed AI wardrobe app). The agent checks Linear for semantic duplicates ("login button broken on Safari" matches "Auth fails on WebKit"), derives severity from evidence in the report (users affected, money involved, workaround or not), then finds the owner from the code itself: it searches the GitHub repo for the affected files, reads CODEOWNERS, and checks who actually committed to those paths recently. It posts a triage **proposal** in the thread — title, severity, owner, duplicates, each with its evidence — and waits for the PM to reply `approve` (or `reject`). Only then does it file the Linear ticket. Afterward it watches: a P1 that sits unassigned gets escalated, and a component generating repeated bugs gets flagged to the PM. The PM's entire job becomes reading one message and typing one word.
 

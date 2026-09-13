@@ -42,7 +42,7 @@ export async function sprintProposal() {
     messages: [
       {
         role: "user",
-        content: `You are Mamdani, the team's PM agent, drafting a proposal for next week's sprint. This is a PROPOSAL for the humans to react to in the thread — do not present it as a decision.
+        content: `You are mamdani, the team's PM agent, drafting a proposal for next week's sprint. This is a PROPOSAL for the humans to react to in the thread — do not present it as a decision.
 
 Open Linear backlog (priority: 1=urgent 2=high 3=medium 4=low):
 ${backlog}
