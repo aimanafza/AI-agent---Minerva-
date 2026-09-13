@@ -113,10 +113,14 @@ process.exit(failures ? 1 : 0);
 
 // --- minimal clients (standalone on purpose: runs even when src/config.js would throw) ---
 async function slackApi(method, params) {
+  const body = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) body.set(k, String(v));
+  }
   const res = await fetch(`https://slack.com/api/${method}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`, "Content-Type": "application/json; charset=utf-8" },
-    body: JSON.stringify(params),
+    headers: { Authorization: `Bearer ${env.SLACK_BOT_TOKEN}` },
+    body,
   });
   const data = await res.json();
   if (!data.ok) throw new Error(`${method}: ${data.error}`);

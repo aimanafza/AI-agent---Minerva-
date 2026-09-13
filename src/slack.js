@@ -1,13 +1,15 @@
 import { config } from "./config.js";
 
 async function slackApi(method, params) {
+  // Form-encoded: Slack's read methods (conversations.*) reject JSON bodies.
+  const body = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) body.set(k, String(v));
+  }
   const res = await fetch(`https://slack.com/api/${method}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.slackToken}`,
-      "Content-Type": "application/json; charset=utf-8",
-    },
-    body: JSON.stringify(params),
+    headers: { Authorization: `Bearer ${config.slackToken}` },
+    body,
   });
   const data = await res.json();
   if (!data.ok) throw new Error(`Slack ${method} failed: ${data.error}`);
