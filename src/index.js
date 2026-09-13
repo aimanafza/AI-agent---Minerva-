@@ -3,6 +3,7 @@ import * as slack from "./slack.js";
 import { triage, enforceGuardrails } from "./orchestrator.js";
 import { execute } from "./executor.js";
 import { sweep, healthReport } from "./watcher.js";
+import { sprintProposal } from "./sprint.js";
 
 import { loadState, saveState } from "./state.js";
 
@@ -95,6 +96,13 @@ async function main() {
         if (msg.subtype) continue; // joins, edits, etc.
         if (msg.text?.trim().toLowerCase() === "!health") {
           await healthReport().catch((e) => console.error("health:", e.message));
+          continue;
+        }
+        if (msg.text?.trim().toLowerCase() === "!sprint") {
+          await slack.postMessage(":calendar: Drafting a sprint proposal from the backlog and the handbook…");
+          await sprintProposal()
+            .then((plan) => slack.postMessage(plan))
+            .catch((e) => console.error("sprint:", e.message));
           continue;
         }
         await handleReport(msg, botUserId).catch(async (e) => {
