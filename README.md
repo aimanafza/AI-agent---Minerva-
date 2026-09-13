@@ -101,6 +101,19 @@ Each report has ground-truth severity, owner (or triage queue), duplicate target
 | Duplicate recall | 100% (9/9 real dupes found) |
 | Thin reports asked instead of guessed | 3/3 |
 
+Final run, 24 reports:
+
+| Metric | Result |
+|---|---|
+| Severity accuracy | 21/24 (88%) |
+| Owner accuracy | 22/24 (92%) |
+| Duplicate precision | 100% (9/9 flagged were real) |
+| Duplicate recall | 100% (9/9 real dupes found) |
+| Thin reports asked instead of guessed | 3/3 |
+| Tickets written without human approval | 0 (enforced by code) |
+
+The eval earned its keep during the build: our first run scored 54% on severity and exposed a real bug — the `UNGROUNDED_SEVERITY` guardrail was silently capping urgent severities (including a P0 data-loss case) to P2 whenever the model paraphrased its evidence instead of quoting the report. We fixed both sides of the contract (the prompt must quote; the guardrail accepts a verbatim quoted span) and severity went 54% to 79% to 88% across runs. Remaining misses: two over-cautious follow-up questions on genuinely ambiguous reports and one duplicate-severity alignment. Reruns vary a few points from LLM nondeterminism, and the answer key tracks the live workspace (CODEOWNERS, existing tickets), so it must be kept in sync with the world.
+
 ```bash
 npm run eval          # scores the live agent on eval/reports.json
 npm test              # guardrail unit tests (no network)
@@ -109,3 +122,13 @@ npm test              # guardrail unit tests (no network)
 `npm test` checks the guardrails in isolation: no owner without retrieved `CODEOWNERS` or commit logins, no invented duplicate, no phantom path, urgent severity must be quoted from the report, cycle/priority claims need a real Notion read. Target for "tickets filed without evidence" is 0 — that is enforced in code, not in the prompt.
 
 We also smoke-tested each integration (`npm run smoke`) and ran the live Slack loop: intake, follow-up, approve, reject, in-thread edits, Linear-originated tickets, `!sprint` lock, and watcher escalations.
+
+## Demo
+
+2-minute demo video: **[LINK — paste before submitting]**
+
+## Team
+
+- Nazym Zhiyengaliyeva — nazym@uni.minerva.edu (GitHub: Nazym-MU)
+- Aiman Afzal — afzal@uni.minerva.edu (GitHub: aimanafza)
+- Arina Alibayeva — arina@uni.minerva.edu (GitHub: arinaalibayeva)
