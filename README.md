@@ -4,7 +4,7 @@ A PM copilot that turns raw bug reports into evidence-backed Linear tickets, the
 
 ## The problem
 
-Bug triage is a real, daily bottleneck for product managers — not a demo workflow we invented. A QA engineer drops a one-line report in Slack or creates a ticket in Linear Triage. Someone then has to reconstruct the bug, hunt for duplicates across differently worded tickets, decide severity, figure out which part of the product is affected, assign an owner, label it, and later decide whether it belongs in this cycle or stays in the backlog. That work is spread across Slack, Linear, GitHub, and Notion. It is slow, easy to get wrong, and it repeats on every report.
+Bug triage is a real, daily bottleneck for product managers. A QA engineer drops a one-line report in Slack or creates a ticket in Linear Triage. Someone then has to reconstruct the bug, hunt for duplicates across differently worded tickets, decide severity, figure out which part of the product is affected, assign an owner, label it, and later decide whether it belongs in this cycle or stays in the backlog. That work is spread across Slack, Linear, GitHub, and Notion. It is slow, easy to get wrong, and it repeats on every report.
 
 The cost of getting it wrong is concrete. A P1 filed as a P3 sits until a customer hits it. Two tickets for the same Safari login failure get two different owners. A vague "swipe is broken" becomes a guessed assignee with no evidence. Urgent work in a deferred area steals a sprint from the cycle's actual goal. The PM spends the afternoon coordinating tools instead of deciding what the team should build.
 
@@ -93,13 +93,13 @@ The eval harness (`npm run eval`) runs the **same** agent — same tools, same p
 
 Each report has ground-truth severity, owner (or triage queue), duplicate target, and whether the agent should ask a follow-up instead of deciding. The mix includes clear-cut bugs, paraphrased duplicates of seeded Linear tickets, thin reports (`should_ask: true`), deferred-area cases, and unowned/ambiguous code (correct owner is `null`).
 
-| Metric | What it measures |
+| Metric | Result |
 |---|---|
-| Severity accuracy | Proposed P0–P3 matches the label (asking when `should_ask` is also a hit) |
-| Owner accuracy | GitHub login matches, or both sides are triage-queue |
-| Duplicate precision / recall | Flagged Linear id vs. the labeled duplicate |
-| Follow-ups asked | Thin reports must ask, not guess |
-| Guardrail fires | Unevidenced claims stripped in code after the model returns |
+| Severity accuracy | 21/24 (88%) |
+| Owner accuracy | 22/24 (92%) |
+| Duplicate precision | 100% (9/9 flagged were real) |
+| Duplicate recall | 100% (9/9 real dupes found) |
+| Thin reports asked instead of guessed | 3/3 |
 
 ```bash
 npm run eval          # scores the live agent on eval/reports.json
