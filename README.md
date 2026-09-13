@@ -93,14 +93,6 @@ The eval harness (`npm run eval`) runs the **same** agent — same tools, same p
 
 Each report has ground-truth severity, owner (or triage queue), duplicate target, and whether the agent should ask a follow-up instead of deciding. The mix includes clear-cut bugs, paraphrased duplicates of seeded Linear tickets, thin reports (`should_ask: true`), deferred-area cases, and unowned/ambiguous code (correct owner is `null`).
 
-| Metric | Result |
-|---|---|
-| Severity accuracy | 21/24 (88%) |
-| Owner accuracy | 22/24 (92%) |
-| Duplicate precision | 100% (9/9 flagged were real) |
-| Duplicate recall | 100% (9/9 real dupes found) |
-| Thin reports asked instead of guessed | 3/3 |
-
 Final run, 24 reports:
 
 | Metric | Result |
