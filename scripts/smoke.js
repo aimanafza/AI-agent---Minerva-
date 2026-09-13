@@ -109,15 +109,29 @@ if (env.GITHUB_TOKEN && env.GITHUB_REPO) {
 }
 
 console.log("\n[notion]");
-if (env.NOTION_API_KEY && env.NOTION_PAGE_ID) {
+if (env.NOTION_API_KEY) {
   try {
-    const res = await fetch(
-      `https://api.notion.com/v1/blocks/${env.NOTION_PAGE_ID}/children?page_size=5`,
-      { headers: { Authorization: `Bearer ${env.NOTION_API_KEY}`, "Notion-Version": "2022-06-28" } }
-    );
-    if (!res.ok) throw new Error(`${res.status} — is the page connected to the integration? (page ••• menu -> Connections)`);
+    const res = await fetch("https://api.notion.com/v1/search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.NOTION_API_KEY}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ filter: { property: "object", value: "page" }, page_size: 50 }),
+    });
+    if (!res.ok) throw new Error(`${res.status} — bad token, or created for the wrong workspace?`);
     const data = await res.json();
-    ok("cycle page", `${data.results?.length ?? 0} blocks readable`);
+    const titles = (data.results || []).map(
+      (p) =>
+        Object.values(p.properties || {})
+          .find((prop) => prop.type === "title")
+          ?.title?.map((t) => t.plain_text)
+          .join("") || "(untitled)"
+    );
+    titles.length
+      ? ok("handbook pages", `${titles.length} visible: ${titles.slice(0, 6).join(" | ")}${titles.length > 6 ? " | …" : ""}`)
+      : fail("handbook pages", "0 pages visible — connect the integration to the handbook's top-level page (••• -> Connections)");
   } catch (e) {
     fail("notion", e.message);
   }

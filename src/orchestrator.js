@@ -38,10 +38,24 @@ const TOOLS = [
     },
   },
   {
-    name: "notion_cycle_priorities",
+    name: "notion_search_pages",
     description:
-      "Read the team's current-cycle priorities page from Notion (cycle focus areas, priority rules, deferrals). Use it to weigh priority: a bug in this cycle's focus area matters more; something the page explicitly defers matters less. Cite the page in your severity_evidence when it changes your call.",
-    input_schema: { type: "object", properties: {}, required: [] },
+      "List pages in the team's Notion handbook (cycle priorities, team ownership, process docs). Optional query filters by title. Returns page titles and ids for notion_read_page.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "optional title filter, e.g. 'cycle' or 'priorities'" } },
+      required: [],
+    },
+  },
+  {
+    name: "notion_read_page",
+    description:
+      "Read one Notion handbook page as text. Sub-pages are listed with their ids — read them with another call if relevant. Use the handbook to weigh priority: a bug in the current cycle's focus area matters more, an explicitly deferred area less. Cite the page title in severity_evidence when it changes your call.",
+    input_schema: {
+      type: "object",
+      properties: { page_id: { type: "string", description: "page id from notion_search_pages or a SUB-PAGE listing" } },
+      required: ["page_id"],
+    },
   },
   {
     name: "ask_reporter",
@@ -87,7 +101,7 @@ Rules — these are hard constraints:
 1. NEVER assign an owner without code-level evidence. Evidence means: you searched the code, found the affected paths, and either CODEOWNERS covers those paths or the commit history shows who works on them. A hunch or a name mentioned in the report is NOT evidence. Without evidence, assign to the triage queue (assignee_github: null) and say why.
 2. NEVER invent severity. Severity comes from the report: user impact, money involved, availability of a workaround. Rubric: P0 = outage or data loss, all/most users. P1 = core flow broken, money involved, or no workaround. P2 = feature broken but workaround exists. P3 = cosmetic, minor. If the report is too thin to place it, use ask_reporter — one specific question.
 3. Check duplicates by meaning. Read the recent Linear issues and compare the underlying problem, not the words. Different words for the same failure = duplicate (high). Same area but different failure = not a duplicate (mention it as related in summary instead).
-4. Investigate before deciding: typically linear_recent_issues first (cheap duplicate check), then github_search_code with a distinctive term from the report, then codeowners/commits on the paths you find. Check notion_cycle_priorities when deciding severity: a bug in the current cycle's focus area gets weighted up, an explicitly deferred area down — and cite the cycle page in severity_evidence when it changed your call. Keep it to a few focused calls.
+4. Investigate before deciding: typically linear_recent_issues first (cheap duplicate check), then github_search_code with a distinctive term from the report, then codeowners/commits on the paths you find. Consult the Notion handbook when deciding severity: notion_search_pages to find the current cycle/priorities page, notion_read_page to read it — a bug in the current cycle's focus area gets weighted up, an explicitly deferred area down, and cite the page title in severity_evidence when it changed your call. Don't read the whole handbook; one or two relevant pages is enough. Keep it to a few focused calls.
 5. End with exactly one terminal call: submit_triage or ask_reporter.`;
 
 async function runTool(name, input) {
@@ -100,10 +114,14 @@ async function runTool(name, input) {
       return (await github.getCodeowners()) ?? "No CODEOWNERS file found.";
     case "github_recent_commits":
       return await github.recentCommits(input.path);
-    case "notion_cycle_priorities":
+    case "notion_search_pages":
       return notion.notionEnabled()
-        ? await notion.getCyclePriorities()
-        : "Notion is not configured — triage without cycle context.";
+        ? await notion.searchPages(input.query || "")
+        : "Notion is not configured — triage without handbook context.";
+    case "notion_read_page":
+      return notion.notionEnabled()
+        ? await notion.readPage(input.page_id)
+        : "Notion is not configured — triage without handbook context.";
     default:
       throw new Error(`Unknown tool ${name}`);
   }
