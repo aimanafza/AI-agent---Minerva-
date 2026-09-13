@@ -63,7 +63,7 @@ async function handleReport(msg, botUserId) {
     return;
   }
 
-  const { decision, notes } = enforceGuardrails(result.decision);
+  const { decision, notes } = await enforceGuardrails(result.decision, result.trace, msg.text);
 
   if (config.requireApproval) {
     const posted = await slack.postMessage(formatProposal(decision, notes), thread_ts);
