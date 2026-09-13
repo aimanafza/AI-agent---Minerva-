@@ -3,7 +3,7 @@ import * as slack from "./slack.js";
 import { triage, enforceGuardrails, reviseDecision } from "./orchestrator.js";
 import { execute } from "./executor.js";
 import { sweep, healthReport } from "./watcher.js";
-import { sprintProposal, revisePlan } from "./sprint.js";
+import { sprintProposal, revisePlan, applySprintPlan } from "./sprint.js";
 
 // Live sprint-planning conversation: !sprint opens it, replies revise the
 // plan, ✅ (or an approve reply) locks it.
@@ -261,6 +261,16 @@ async function main() {
           }
           if (lock) {
             await slack.postMessage(sprintLockedMessage(), sprintSession.threadTs);
+            const lockedThread = sprintSession.threadTs;
+            const lockedPlan = sprintSession.plan;
+            try {
+              const summary = await applySprintPlan(lockedPlan);
+              await slack.postMessage(summary, lockedThread);
+              console.log("Sprint plan committed to Linear");
+            } catch (e) {
+              console.error("apply sprint:", e.message);
+              await slack.postMessage(`couldn't write the sprint to Linear: ${e.message.slice(0, 120)}`, lockedThread);
+            }
             sprintSession = null;
             console.log("Sprint session locked");
           }

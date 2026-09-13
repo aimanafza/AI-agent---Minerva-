@@ -141,6 +141,52 @@ export async function updateIssue({ id, severity, assigneeId, labels }) {
   return data.issueUpdate.issue;
 }
 
+// Sprint plumbing: the active cycle (or the next upcoming one), the team's
+// projects, and the write that commits a locked sprint plan.
+export async function getUpcomingCycle() {
+  const teamId = await getTeamId();
+  const data = await gql(
+    `query($teamId: String!) { team(id: $teamId) {
+      activeCycle { id number startsAt endsAt }
+      cycles(first: 10) { nodes { id number startsAt endsAt } }
+    } }`,
+    { teamId }
+  );
+  if (data.team.activeCycle) return data.team.activeCycle;
+  const now = Date.now();
+  return (
+    data.team.cycles.nodes
+      .filter((c) => new Date(c.endsAt).getTime() > now)
+      .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))[0] || null
+  );
+}
+
+export async function listProjects() {
+  const teamId = await getTeamId();
+  const data = await gql(
+    `query($teamId: String!) { team(id: $teamId) { projects { nodes { id name } } } }`,
+    { teamId }
+  );
+  return data.team.projects.nodes;
+}
+
+export async function assignIssueToSprint({ id, cycleId, assigneeId, projectId }) {
+  const data = await gql(
+    `mutation($id: String!, $input: IssueUpdateInput!) {
+      issueUpdate(id: $id, input: $input) { success issue { identifier } }
+    }`,
+    {
+      id,
+      input: {
+        ...(cycleId ? { cycleId } : {}),
+        ...(assigneeId ? { assigneeId } : {}),
+        ...(projectId ? { projectId } : {}),
+      },
+    }
+  );
+  return data.issueUpdate.issue;
+}
+
 export async function addComment(issueId, body) {
   await gql(
     `mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success } }`,
