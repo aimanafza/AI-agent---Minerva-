@@ -77,9 +77,28 @@ function stripPolicyClaims(text) {
 // treeHasPath: optional async (path) => boolean for a live confirmation beyond
 // what the trace already shows. Defaults to "not confirmed" so this module
 // stays dependency-free; orchestrator.js supplies the real one (github.treeHasPath).
+const VALID_SEVERITIES = new Set(["P0", "P1", "P2", "P3"]);
+
 export async function enforceGuardrails(decision, trace, reportText, treeHasPath = async () => false) {
   const notes = [];
   const fired = [];
+
+  // CHECK 0: severity must be present. The model sometimes omits a required
+  // field entirely — try to recover it from a bare P0..P3 token in
+  // severity_evidence before falling back to a safe default.
+  if (!VALID_SEVERITIES.has(decision.severity)) {
+    const recovered = /\bP([0-3])\b/.exec(decision.severity_evidence || "");
+    if (recovered) {
+      decision.severity = `P${recovered[1]}`;
+      notes.push(`Guardrail: severity was missing — recovered ${decision.severity} from severity_evidence.`);
+      fired.push({ code: "MISSING_SEVERITY", detail: `recovered ${decision.severity} from a P0-P3 token in severity_evidence` });
+    } else {
+      decision.severity = "P2";
+      notes.push("Guardrail: severity was missing and no P0-P3 token was found in severity_evidence — defaulted to P2.");
+      fired.push({ code: "MISSING_SEVERITY", detail: "no P0-P3 token found in severity_evidence; defaulted to P2" });
+    }
+  }
+
   const evidence = buildEvidence(trace);
 
   // Existing check: assignee proposed with an empty evidence string.

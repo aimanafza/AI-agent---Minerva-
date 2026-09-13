@@ -19,6 +19,30 @@ function baseDecision(overrides = {}) {
   };
 }
 
+test("missing severity is recovered from a P0-P3 token in severity_evidence", async () => {
+  const decision = baseDecision({
+    severity: undefined,
+    severity_evidence: "reporter flagged this as P3, just a cosmetic typo",
+  });
+
+  const { decision: out, fired } = await enforceGuardrails(decision, [], "typo on the pricing page");
+
+  assert.equal(out.severity, "P3");
+  assert.ok(fired.some((f) => f.code === "MISSING_SEVERITY"));
+});
+
+test("missing severity with no recoverable token falls back to P2", async () => {
+  const decision = baseDecision({
+    severity: undefined,
+    severity_evidence: "no clear signal on urgency here",
+  });
+
+  const { decision: out, fired } = await enforceGuardrails(decision, [], "something is off");
+
+  assert.equal(out.severity, "P2");
+  assert.ok(fired.some((f) => f.code === "MISSING_SEVERITY"));
+});
+
 test("assignee present in CODEOWNERS text survives", async () => {
   const trace = [
     {
