@@ -117,7 +117,7 @@ We also smoke-tested each integration (`npm run smoke`) and ran the live Slack l
 
 ## Demo
 
-2-minute demo video: **[LINK — paste before submitting]**
+2-minute demo video:(https://drive.google.com/drive/folders/1ViHjHEY9M_xXxT5P7fnQTVmozI1Wauar?usp=drive_link)
 
 ## Team
 
