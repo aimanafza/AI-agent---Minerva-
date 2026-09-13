@@ -56,7 +56,8 @@ Produce, in Slack mrkdwn (*bold*, bullets), under 3000 characters:
 2. *Proposed sprint* — per engineer: the ticket ids to take, in order, one-line rationale each. Balance load; respect handbook priorities.
 3. *Deliberately deferred* — ticket ids left out and why (one line each).
 4. *Patterns worth a project* — 1-2 recurring-bug clusters that suggest structural work rather than one-off fixes, each grounded in the ticket ids that evidence it.
-End with: "React ✅ to adopt as the sprint draft, or reply with changes."`,
+Voice: lowercase by default, no emoji, short sentences, no hedging filler.
+End with: "react with a checkmark to adopt this as the sprint draft, or reply with changes."`,
       },
     ],
   });
@@ -81,7 +82,7 @@ ${previousPlan}
 Thread so far (newest last):
 ${transcript}
 
-Reply with the FULL revised plan in the same Slack mrkdwn format, under 3000 characters. First line: *Revised:* followed by a one-sentence summary of what changed. End with: "React ✅ to lock this sprint plan, or keep the feedback coming."`,
+Reply with the FULL revised plan in the same Slack mrkdwn format, under 3000 characters. Voice: lowercase by default, no emoji, short sentences. First line: *revised:* plus a one-sentence summary of what changed. End with: "react with a checkmark to lock this plan, or keep the feedback coming."`,
       },
     ],
   });

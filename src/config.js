@@ -22,5 +22,8 @@ export const config = {
   requireApproval: (process.env.REQUIRE_APPROVAL || "true") === "true",
   // Optional: Notion handbook access. When unset, the Notion tools are disabled.
   notionKey: process.env.NOTION_API_KEY || null,
+  // Optional PM routing: {"label": "SLACK_MEMBER_ID", "default": ["id", ...]}.
+  // When set, proposals mention the responsible PM and only PMs can approve.
+  pmMap: process.env.PM_MAP ? JSON.parse(process.env.PM_MAP) : null,
   model: "claude-sonnet-5",
 };

@@ -54,7 +54,7 @@ export async function getReactions(ts) {
     timestamp: ts,
     full: true,
   });
-  return (data.message?.reactions || []).map((r) => r.name);
+  return (data.message?.reactions || []).map((r) => ({ name: r.name, users: r.users || [] }));
 }
 
 export async function getBotUserId() {

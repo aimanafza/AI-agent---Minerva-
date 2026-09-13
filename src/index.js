@@ -1,6 +1,6 @@
 import { config } from "./config.js";
 import * as slack from "./slack.js";
-import { triage, enforceGuardrails } from "./orchestrator.js";
+import { triage, enforceGuardrails, reviseDecision } from "./orchestrator.js";
 import { execute } from "./executor.js";
 import { sweep, healthReport } from "./watcher.js";
 import { sprintProposal, revisePlan } from "./sprint.js";
@@ -10,7 +10,7 @@ import { sprintProposal, revisePlan } from "./sprint.js";
 let sprintSession = null; // { threadTs, planTs, plan, lastReplyTs }
 
 import { loadState, saveState } from "./state.js";
-import { onItMessage, followUpQuestionMessage, proposalMessage, rejectedMessage, triageFailedMessage } from "./voice.js";
+import { onItMessage, followUpQuestionMessage, proposalMessage, rejectedMessage, triageFailedMessage, linearTicketDetectedMessage, sprintDraftingMessage, sprintLockedMessage, revisedProposalMessage } from "./voice.js";
 
 // Pending state survives restarts (.state.json) — a restart must not orphan
 // open proposal threads.
@@ -26,6 +26,31 @@ const APPROVE_TEXT = /^\s*(approve[d]?|yes+|yep|yeah|lgtm|ok(ay)?|ship( it)?|go(
 const REJECT_TEXT = /^\s*(reject(ed)?|no|nope|deny|denied|drop(ped)?|don'?t|❌|👎)\b/i;
 const APPROVE_REACTIONS = new Set(["white_check_mark", "heavy_check_mark", "ballot_box_with_check", "+1", "thumbsup", "ok_hand", "raised_hands"]);
 const REJECT_REACTIONS = new Set(["x", "-1", "thumbsdown", "no_entry", "no_entry_sign"]);
+
+// PM routing (optional, via PM_MAP): route each proposal to the PM who owns
+// the bug's area, and only PMs can approve/reject/edit. Without PM_MAP,
+// anyone can (small-team mode).
+const pmIds = config.pmMap ? new Set(Object.values(config.pmMap).flat()) : null;
+const isPM = (userId) => !pmIds || pmIds.has(userId);
+
+function pmMention(decision) {
+  if (!config.pmMap) return "";
+  const byLabel = (decision.labels || [])
+    .map((l) => config.pmMap[l.toLowerCase()])
+    .find(Boolean);
+  const ids = byLabel ? [byLabel] : [].concat(config.pmMap.default || []);
+  return ids.length ? ids.map((id) => `<@${id}>`).join(" ") + " your call on this one\n" : "";
+}
+
+function reactionVerdict(reactions) {
+  for (const r of reactions) {
+    const fromPM = !pmIds || r.users.some((u) => pmIds.has(u));
+    if (!fromPM) continue;
+    if (APPROVE_REACTIONS.has(r.name)) return "approve";
+    if (REJECT_REACTIONS.has(r.name)) return "reject";
+  }
+  return null;
+}
 
 async function handleReport(msg, botUserId) {
   const thread_ts = msg.thread_ts || msg.ts;
@@ -54,7 +79,7 @@ async function handleReport(msg, botUserId) {
   const { decision, notes } = await enforceGuardrails(result.decision, result.trace, msg.text);
 
   if (config.requireApproval) {
-    const posted = await slack.postMessage(proposalMessage(decision, notes), thread_ts);
+    const posted = await slack.postMessage(pmMention(decision) + proposalMessage(decision, notes), thread_ts);
     pendingApprovals.set(thread_ts, { decision, notes, proposalTs: posted.ts });
     persist();
     console.log(`Proposal posted, awaiting approval: ${decision.title}`);
@@ -71,7 +96,7 @@ async function handleReport(msg, botUserId) {
 async function handleLinearTicket(issue) {
   console.log(`\n--- Untriaged Linear ticket: ${issue.identifier} — ${issue.title}`);
   const root = await slack.postMessage(
-    `:inbox_tray: New ticket created directly in Linear: *${issue.identifier} — ${issue.title}*. Triaging it now…`
+    linearTicketDetectedMessage(issue.identifier, issue.title)
   );
   const thread_ts = root.ts;
   const report =
@@ -83,11 +108,11 @@ async function handleLinearTicket(issue) {
   if (result.kind === "question") {
     pendingQuestions.add(thread_ts);
     persist();
-    await slack.postMessage(`:question: Before triaging ${issue.identifier}: ${result.question}`, thread_ts);
+    await slack.postMessage(followUpQuestionMessage(`${result.question} (for ${issue.identifier})`), thread_ts);
     return;
   }
   const { decision, notes } = await enforceGuardrails(result.decision, result.trace, report);
-  const posted = await slack.postMessage(proposalMessage(decision, notes), thread_ts);
+  const posted = await slack.postMessage(pmMention(decision) + proposalMessage(decision, notes), thread_ts);
   pendingApprovals.set(thread_ts, {
     decision,
     notes,
@@ -127,7 +152,7 @@ async function main() {
           continue;
         }
         if (msg.text?.trim().toLowerCase() === "!sprint") {
-          await slack.postMessage(":calendar: Drafting a sprint proposal from the backlog and the handbook…");
+          await slack.postMessage(sprintDraftingMessage());
           try {
             const plan = await sprintProposal();
             const posted = await slack.postMessage(plan);
@@ -143,28 +168,49 @@ async function main() {
           await slack.postMessage(triageFailedMessage(e.message), msg.thread_ts || msg.ts);
         });
       }
-      // Poll threads awaiting approval: a reply (approve/yes/lgtm/…) or a
-      // reaction (✅/👍) on the proposal message from ANY human counts.
+      // Poll threads awaiting approval. A PM's reply (approve/reject/anything
+      // else = edit request) or reaction on the proposal decides; without
+      // PM_MAP any human counts. Non-verdict PM replies revise the proposal.
       for (const [t, pending] of [...pendingApprovals]) {
         let verdict = null;
+        let editRequest = null;
 
         const replies = await slack.fetchThread(t);
         const last = replies[replies.length - 1];
-        if (last && last.user !== botUserId && !last.bot_id) {
+        if (last && last.user !== botUserId && !last.bot_id && isPM(last.user)) {
           const text = (last.text || "").trim();
           if (APPROVE_TEXT.test(text)) verdict = "approve";
           else if (REJECT_TEXT.test(text)) verdict = "reject";
+          else if (text && last.ts !== pending.lastReplyTs) editRequest = { text, ts: last.ts, replies };
         }
 
         if (!verdict && pending.proposalTs) {
           try {
             const reactions = await slack.getReactions(pending.proposalTs);
-            if (reactions.some((r) => APPROVE_REACTIONS.has(r))) verdict = "approve";
-            else if (reactions.some((r) => REJECT_REACTIONS.has(r))) verdict = "reject";
+            verdict = reactionVerdict(reactions) || verdict;
           } catch (e) {
             // reactions:read scope not granted yet — reply-based approval still works
             if (!String(e.message).includes("missing_scope")) console.error("reactions:", e.message);
           }
+        }
+
+        if (!verdict && editRequest) {
+          pending.lastReplyTs = editRequest.ts;
+          persist();
+          const transcript = editRequest.replies
+            .map((m) => `${m.user === botUserId ? "mamdani" : "pm"}: ${m.text}`)
+            .join("\n");
+          try {
+            const revised = await reviseDecision(pending.decision, transcript);
+            const posted = await slack.postMessage(revisedProposalMessage(revised, pending.notes), t);
+            pending.decision = revised;
+            pending.proposalTs = posted.ts;
+            persist();
+            console.log(`Proposal revised from PM feedback: ${revised.title}`);
+          } catch (e) {
+            console.error("revise:", e.message);
+          }
+          continue;
         }
 
         if (verdict === "approve") {
@@ -193,7 +239,7 @@ async function main() {
           let lock = false;
           try {
             const reactions = await slack.getReactions(sprintSession.planTs);
-            if (reactions.some((r) => APPROVE_REACTIONS.has(r))) lock = true;
+            if (reactionVerdict(reactions) === "approve") lock = true;
           } catch {
             // reactions scope missing — reply-based lock still works
           }
@@ -214,7 +260,7 @@ async function main() {
             }
           }
           if (lock) {
-            await slack.postMessage(":lock: Sprint plan locked — final version above. See you Monday.", sprintSession.threadTs);
+            await slack.postMessage(sprintLockedMessage(), sprintSession.threadTs);
             sprintSession = null;
             console.log("Sprint session locked");
           }

@@ -66,6 +66,22 @@ export function proposalMessage(decision, notes) {
   return blocks.join("\n\n");
 }
 
+export function linearTicketDetectedMessage(identifier, title) {
+  return `new ticket went straight into Linear: *${identifier} — ${title}*. triaging it now`;
+}
+
+export function sprintDraftingMessage() {
+  return "drafting a sprint proposal from the backlog and the handbook, give me a minute";
+}
+
+export function sprintLockedMessage() {
+  return "sprint plan locked. final version above. see you monday.";
+}
+
+export function revisedProposalMessage(decision, notes) {
+  return `revised proposal\n\n${proposalMessage(decision, notes)}`;
+}
+
 export function filedMessage(issue, decision, assigneeLabel) {
   return `filed as <${issue.url}|${issue.identifier}>, ${decision.severity} ${glossOf(decision.severity)}, assigned to ${assigneeLabel}`;
 }

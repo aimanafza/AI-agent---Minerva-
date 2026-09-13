@@ -195,6 +195,35 @@ export async function triage(reportText, threadContext = []) {
   throw new Error("Triage did not terminate within 12 turns");
 }
 
+// A PM is editing a pending proposal in the thread ("make it P1", "give it to
+// Nazym"). Apply their changes and return the full updated decision. Forced
+// tool call so the result always matches the submit_triage schema.
+export async function reviseDecision(decision, feedbackTranscript) {
+  const submitTool = TOOLS.find((t) => t.name === "submit_triage");
+  const resp = await anthropic.messages.create({
+    model: config.model,
+    max_tokens: 3000,
+    tools: [submitTool],
+    tool_choice: { type: "tool", name: "submit_triage" },
+    messages: [
+      {
+        role: "user",
+        content: `You are mamdani. A PM is editing this pending triage proposal in the Slack thread. Apply their requested changes and resubmit the FULL decision. Keep every field they did not ask to change. The PM's word overrides the normal evidence rules.
+
+${VOICE_RULES}
+
+Current decision:
+${JSON.stringify(decision, null, 2)}
+
+PM feedback from the thread (newest last):
+${feedbackTranscript}`,
+      },
+    ],
+  });
+  const tu = resp.content.find((b) => b.type === "tool_use" && b.name === "submit_triage");
+  return tu ? tu.input : decision;
+}
+
 // Deterministic guardrails — enforced in code, not in the prompt. The actual
 // logic lives in guardrails.js (dependency-free, for unit testing); here we
 // wire in the live tree lookup for the PHANTOM_PATH check.
