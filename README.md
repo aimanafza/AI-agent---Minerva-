@@ -13,7 +13,7 @@ One orchestrator agent (Claude, tool-use loop) with read-only investigation tool
 ```
 Slack (#bugs) ──> orchestrator (Claude)
                     ├─ linear_recent_issues     (duplicate check, semantic)
-                    ├─ github_search_code       (locate affected files)
+                    ├─ github_find_files        (locate affected files by path)
                     ├─ github_codeowners        (ownership by policy)
                     ├─ github_recent_commits    (ownership in practice)
                     └─ submit_triage / ask_reporter  (terminal, structured, evidenced)

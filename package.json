@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "eval": "node eval/run.js",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

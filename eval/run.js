@@ -11,6 +11,7 @@ const rows = [];
 let sevHit = 0, ownerHit = 0;
 let dupTP = 0, dupFP = 0, dupFN = 0;
 let asked = 0;
+let guardrailFires = 0;
 
 for (const r of reports) {
   process.stdout.write(`[${r.id}] ${r.text.slice(0, 60)}... `);
@@ -32,7 +33,7 @@ for (const r of reports) {
     continue;
   }
 
-  const { decision: d } = enforceGuardrails(out.decision);
+  const { decision: d, fired } = await enforceGuardrails(out.decision, out.trace, r.text);
   const e = r.expected;
 
   const sevOk = d.severity === e.severity;
@@ -46,10 +47,12 @@ for (const r of reports) {
   else if (predDup && predDup !== trueDup) dupFP++;
   if (trueDup && predDup !== trueDup) dupFN++;
 
+  guardrailFires += fired.length;
   console.log(
-    `sev ${d.severity}${sevOk ? "✓" : `✗(want ${e.severity})`} | owner ${d.assignee_github || "queue"}${ownerOk ? "✓" : `✗(want ${e.assignee_github || "queue"})`} | dup ${predDup || "-"}`
+    `sev ${d.severity}${sevOk ? "✓" : `✗(want ${e.severity})`} | owner ${d.assignee_github || "queue"}${ownerOk ? "✓" : `✗(want ${e.assignee_github || "queue"})`} | dup ${predDup || "-"}` +
+      (fired.length ? ` | guardrails: ${fired.map((f) => f.code).join(", ")}` : "")
   );
-  rows.push({ id: r.id, severity: d.severity, sevOk, owner: d.assignee_github, ownerOk, dup: predDup });
+  rows.push({ id: r.id, severity: d.severity, sevOk, owner: d.assignee_github, ownerOk, dup: predDup, fired: fired.map((f) => f.code) });
 }
 
 const n = reports.length;
@@ -63,4 +66,5 @@ console.log(`Owner accuracy:        ${ownerHit}/${n} (${((100 * ownerHit) / n).t
 console.log(`Duplicate precision:   ${(100 * dupPrecision).toFixed(0)}%  (${dupTP} right of ${dupTP + dupFP} flagged)`);
 console.log(`Duplicate recall:      ${(100 * dupRecall).toFixed(0)}%  (${dupTP} of ${dupTP + dupFN} real dupes found)`);
 console.log(`Follow-ups asked:      ${asked}`);
+console.log(`Guardrails fired:      ${guardrailFires}`);
 console.log("=========================================");

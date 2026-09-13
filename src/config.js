@@ -14,6 +14,7 @@ export const config = {
   linearTeamKey: req("LINEAR_TEAM_KEY"),
   githubToken: req("GITHUB_TOKEN"),
   githubRepo: req("GITHUB_REPO"),
+  githubBranch: process.env.GITHUB_BRANCH || "main",
   userMap: JSON.parse(process.env.USER_MAP || "{}"),
   escalateAfterMin: Number(process.env.ESCALATE_AFTER_MIN || 120),
   watchIntervalSec: Number(process.env.WATCH_INTERVAL_SEC || 60),

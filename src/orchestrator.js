@@ -3,6 +3,7 @@ import { config } from "./config.js";
 import * as linear from "./linear.js";
 import * as github from "./github.js";
 import * as notion from "./notion.js";
+import { enforceGuardrails as enforceGuardrailsPure, buildEvidence } from "./guardrails.js";
 
 const anthropic = new Anthropic({ apiKey: config.anthropicKey });
 
@@ -14,12 +15,12 @@ const TOOLS = [
     input_schema: { type: "object", properties: {}, required: [] },
   },
   {
-    name: "github_search_code",
+    name: "github_find_files",
     description:
-      "Search the product repo's code for a term from the bug report (an error string, component name, endpoint, UI copy). Returns matching file paths. Use to locate which files the bug points to.",
+      "Find files in the product repo whose PATH matches words from the bug report (a component or feature name, e.g. 'avatar', 'upload', 'swipe', 'waitlist'). This matches file paths in the repo tree, not file contents — it is not full-text code search, so search with component/feature words rather than error-message fragments.",
     input_schema: {
       type: "object",
-      properties: { query: { type: "string", description: "search term, e.g. 'checkout' or an error message fragment" } },
+      properties: { query: { type: "string", description: "component or feature words, e.g. 'avatar upload' or 'waitlist'" } },
       required: ["query"],
     },
   },
@@ -101,15 +102,15 @@ Rules — these are hard constraints:
 1. NEVER assign an owner without code-level evidence. Evidence means: you searched the code, found the affected paths, and either CODEOWNERS covers those paths or the commit history shows who works on them. A hunch or a name mentioned in the report is NOT evidence. Without evidence, assign to the triage queue (assignee_github: null) and say why.
 2. NEVER invent severity. Severity comes from the report: user impact, money involved, availability of a workaround. Rubric: P0 = outage or data loss, all/most users. P1 = core flow broken, money involved, or no workaround. P2 = feature broken but workaround exists. P3 = cosmetic, minor. If the report is too thin to place it, use ask_reporter — one specific question.
 3. Check duplicates by meaning. Read the recent Linear issues and compare the underlying problem, not the words. Different words for the same failure = duplicate (high). Same area but different failure = not a duplicate (mention it as related in summary instead).
-4. Investigate before deciding: typically linear_recent_issues first (cheap duplicate check), then github_search_code with a distinctive term from the report, then codeowners/commits on the paths you find. Consult the Notion handbook when deciding severity: notion_search_pages to find the current cycle/priorities page, notion_read_page to read it — a bug in the current cycle's focus area gets weighted up, an explicitly deferred area down, and cite the page title in severity_evidence when it changed your call. Don't read the whole handbook; one or two relevant pages is enough. Keep it to a few focused calls.
+4. Investigate before deciding: typically linear_recent_issues first (cheap duplicate check), then github_find_files with component/feature words from the report (e.g. 'avatar', 'upload', 'swipe', 'waitlist') — it matches file paths, not file contents — then codeowners/commits on the paths you find. Consult the Notion handbook when deciding severity: notion_search_pages to find the current cycle/priorities page, notion_read_page to read it — a bug in the current cycle's focus area gets weighted up, an explicitly deferred area down, and cite the page title in severity_evidence when it changed your call. Don't read the whole handbook; one or two relevant pages is enough. Keep it to a few focused calls.
 5. End with exactly one terminal call: submit_triage or ask_reporter.`;
 
 async function runTool(name, input) {
   switch (name) {
     case "linear_recent_issues":
       return await linear.recentIssues();
-    case "github_search_code":
-      return await github.searchCode(input.query);
+    case "github_find_files":
+      return await github.findFiles(input.query);
     case "github_codeowners":
       return (await github.getCodeowners()) ?? "No CODEOWNERS file found.";
     case "github_recent_commits":
@@ -171,13 +172,15 @@ export async function triage(reportText, threadContext = []) {
     messages.push({ role: "assistant", content: response.content });
     const results = [];
     for (const tu of toolUses) {
+      const startedAt = Date.now();
       let result;
       try {
         result = await runTool(tu.name, tu.input);
       } catch (err) {
         result = `Tool error: ${err.message}`;
       }
-      trace.push({ tool: tu.name, input: tu.input });
+      const ms = Date.now() - startedAt;
+      trace.push({ tool: tu.name, input: tu.input, result, ms });
       results.push({
         type: "tool_result",
         tool_use_id: tu.id,
@@ -189,16 +192,11 @@ export async function triage(reportText, threadContext = []) {
   throw new Error("Triage did not terminate within 12 turns");
 }
 
-// Deterministic guardrails — enforced in code, not in the prompt.
-export function enforceGuardrails(decision) {
-  const notes = [];
-  if (decision.assignee_github && !decision.assignee_evidence?.trim()) {
-    notes.push("Guardrail: assignee proposed without evidence — routed to triage queue instead.");
-    decision.assignee_github = null;
-    decision.triage_queue_reason = "No code-level evidence for an owner.";
-  }
-  if (decision.duplicate_of && decision.duplicate_confidence === "none") {
-    decision.duplicate_of = null;
-  }
-  return { decision, notes };
+// Deterministic guardrails — enforced in code, not in the prompt. The actual
+// logic lives in guardrails.js (dependency-free, for unit testing); here we
+// wire in the live tree lookup for the PHANTOM_PATH check.
+export async function enforceGuardrails(decision, trace, reportText) {
+  return enforceGuardrailsPure(decision, trace, reportText, github.treeHasPath);
 }
+
+export { buildEvidence };

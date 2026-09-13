@@ -14,13 +14,71 @@ async function gh(path, params = {}) {
   return res.json();
 }
 
-// Search code in the demo repo for a term (error message, component name, route).
-export async function searchCode(query) {
-  const data = await gh("/search/code", { q: `${query} repo:${config.githubRepo}` });
-  return (data.items || []).slice(0, 8).map((it) => ({
-    path: it.path,
-    name: it.name,
-  }));
+const EXCLUDED_DIRS = ["node_modules/", ".git/", "dist/", "build/"];
+const LOCKFILE_NAMES = new Set([
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "composer.lock",
+  "Gemfile.lock",
+  "Cargo.lock",
+]);
+
+function isExcludedPath(path) {
+  if (EXCLUDED_DIRS.some((d) => path.startsWith(d) || path.includes(`/${d}`))) return true;
+  const filename = path.split("/").pop();
+  return LOCKFILE_NAMES.has(filename) || filename.endsWith(".lock");
+}
+
+// Full recursive file tree for the configured branch, fetched once per process.
+let treePromise = null;
+export async function getTree() {
+  if (!treePromise) {
+    treePromise = (async () => {
+      const data = await gh(`/repos/${config.githubRepo}/git/trees/${config.githubBranch}`, { recursive: 1 });
+      return (data.tree || [])
+        .filter((it) => it.type === "blob")
+        .map((it) => it.path)
+        .filter((p) => !isExcludedPath(p));
+    })();
+  }
+  return treePromise;
+}
+
+function tokenize(query) {
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 3);
+}
+
+// Find files in the repo whose PATH matches words from the query (a component
+// or feature name, e.g. "avatar", "upload", "waitlist") — not full-text search.
+export async function findFiles(query) {
+  const tokens = tokenize(query);
+  if (!tokens.length) return [];
+
+  const tree = await getTree();
+  const scored = [];
+  for (const path of tree) {
+    const lower = path.toLowerCase();
+    const filename = lower.slice(lower.lastIndexOf("/") + 1);
+    const dirPart = lower.slice(0, lower.length - filename.length);
+    let score = 0;
+    for (const token of tokens) {
+      if (filename.includes(token)) score += 2;
+      if (dirPart.includes(token)) score += 1;
+    }
+    if (score > 0) scored.push({ path, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 8).map((s) => s.path);
+}
+
+// Exact-match existence check against the cached tree — used by guardrails.
+export async function treeHasPath(path) {
+  const tree = await getTree();
+  return tree.includes(path);
 }
 
 // Fetch CODEOWNERS from the usual locations.

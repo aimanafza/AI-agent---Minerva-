@@ -92,10 +92,12 @@ if (env.GITHUB_TOKEN && env.GITHUB_REPO) {
       } catch {}
     }
     if (!owners) fail("CODEOWNERS", "not found — add .github/CODEOWNERS");
-    const search = await gh(`/search/code?q=${encodeURIComponent(`login repo:${env.GITHUB_REPO}`)}`);
-    search.total_count > 0
-      ? ok("code search", `${search.total_count} hits for 'login'`)
-      : fail("code search", "0 hits — repo may not be indexed yet; retry in 15 min, else tell Person 1 (tree fallback)");
+    const branch = env.GITHUB_BRANCH || "main";
+    const tree = await gh(`/repos/${env.GITHUB_REPO}/git/trees/${branch}?recursive=1`);
+    const fileCount = (tree.tree || []).filter((it) => it.type === "blob").length;
+    fileCount > 0
+      ? ok("repo tree", `${fileCount} files on '${branch}'`)
+      : fail("repo tree", `0 files found on branch '${branch}' — check GITHUB_BRANCH`);
     const commits = await gh(`/repos/${env.GITHUB_REPO}/commits?per_page=10`);
     const logins = [...new Set(commits.map((c) => c.author?.login).filter(Boolean))];
     logins.length >= 2
