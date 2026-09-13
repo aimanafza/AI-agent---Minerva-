@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "eval": "node eval/run.js",
-    "seed": "node scripts/seed-linear.js"
+    "smoke": "node scripts/smoke.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
