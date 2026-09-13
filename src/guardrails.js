@@ -21,6 +21,24 @@ export function buildEvidence(trace) {
   return e;
 }
 
+function normalizeForMatch(text) {
+  return (text || "")
+    .toLowerCase()
+    .replace(/[‘’“”]/g, '"')
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Spans of 8+ chars inside straight or curly double quotes.
+function quotedSpans(text) {
+  const spans = [];
+  const re = /["“]([^"“”]{8,})["”]/g;
+  let m;
+  while ((m = re.exec(text || ""))) spans.push(m[1]);
+  return spans;
+}
+
 function contentWords(text) {
   return (text || "")
     .toLowerCase()
@@ -126,12 +144,18 @@ export async function enforceGuardrails(decision, trace, reportText, treeHasPath
   }
 
   // CHECK 4: urgent severity evidence must be grounded in the report text.
+  // Primary grounding: a verbatim quoted span ("...") from the report inside
+  // severity_evidence. Fallback: word-overlap ratio (paraphrase tolerance).
   if (decision.severity === "P0" || decision.severity === "P1") {
+    const normReport = normalizeForMatch(reportText);
+    const quoteGrounded = quotedSpans(decision.severity_evidence).some((s) =>
+      normReport.includes(normalizeForMatch(s))
+    );
     const evWords = contentWords(decision.severity_evidence);
     const reportWords = new Set(contentWords(reportText));
     const matched = evWords.filter((w) => reportWords.has(w)).length;
     const ratio = evWords.length ? matched / evWords.length : 0;
-    if (ratio < 0.6) {
+    if (!quoteGrounded && ratio < 0.6) {
       notes.push(
         `Guardrail: severity_evidence isn't grounded in the report — urgent severity requires evidence quoted from the report. Capped ${decision.severity} to P2.`
       );

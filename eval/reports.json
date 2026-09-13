@@ -1,27 +1,122 @@
 [
   {
     "id": "R01",
-    "text": "hey the login button does nothing when i click it on safari, works fine in chrome. a customer emailed about it too",
-    "expected": { "severity": "P1", "assignee_github": "priya-gh", "duplicate_of": "ENG-12", "should_ask": false }
+    "text": "avatar generation has been failing with an endless spinner for everyone in the beta channel today, no way to get an avatar at all",
+    "expected": { "severity": "P1", "assignee_github": "aimanafza", "duplicate_of": null, "should_ask": false }
   },
   {
     "id": "R02",
-    "text": "checkout page shows $NaN for the total when the cart has a discounted item. saw it myself just now, money-facing so flagging",
-    "expected": { "severity": "P1", "assignee_github": "aiman-gh", "duplicate_of": null, "should_ask": false }
+    "text": "password reset emails never arrive — tested on 3 accounts across gmail and outlook, those users are fully locked out",
+    "expected": { "severity": "P1", "assignee_github": "arinaalibayeva", "duplicate_of": null, "should_ask": false }
   },
   {
     "id": "R03",
-    "text": "the settings page looks slightly off",
-    "expected": { "severity": null, "assignee_github": null, "duplicate_of": null, "should_ask": true }
+    "text": "small thing: the profile page spells it 'prefrences'",
+    "expected": { "severity": "P3", "assignee_github": "aimanafza", "duplicate_of": null, "should_ask": false }
   },
   {
     "id": "R04",
-    "text": "typo on the pricing page: 'recieve' should be 'receive'",
-    "expected": { "severity": "P3", "assignee_github": null, "duplicate_of": null, "should_ask": false }
+    "text": "packing calculator says 0 bags needed even with 30 items on the trip, tried three trips, no workaround — you just can't plan a trip",
+    "expected": { "severity": "P1", "assignee_github": "arinaalibayeva", "duplicate_of": null, "should_ask": false }
   },
   {
     "id": "R05",
-    "text": "auth is broken on webkit browsers — token refresh 401s and users get logged out. affects everyone on iOS",
-    "expected": { "severity": "P1", "assignee_github": "priya-gh", "duplicate_of": "ENG-12", "should_ask": false }
+    "text": "weather-based outfit suggestions showed winter coats during the heatwave this week. users can ignore them and pick manually but it looks silly",
+    "expected": { "severity": "P2", "assignee_github": "aimanafza", "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R06",
+    "text": "wardrobe grid thumbnails look stretched on ultrawide monitors. everything still works, just ugly",
+    "expected": { "severity": "P3", "assignee_github": "Nazym-MU", "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R07",
+    "text": "the waitlist signup form accepts obviously invalid emails like 'abc' and shows the success screen anyway",
+    "expected": { "severity": "P2", "assignee_github": "arinaalibayeva", "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R08",
+    "text": "since the latest chrome update the extension popup shows raw JSON instead of the item preview. adding from the website still works fine as a fallback",
+    "expected": { "severity": "P2", "assignee_github": "Nazym-MU", "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R09",
+    "text": "can't get into the app from my iPhone — safari just bounces me back to the sign-in screen every single time",
+    "expected": { "severity": "P1", "assignee_github": "arinaalibayeva", "duplicate_of": "WAR-5", "should_ask": false }
+  },
+  {
+    "id": "R10",
+    "text": "clothing photo upload gets stuck at 99% and just never completes",
+    "expected": { "severity": "P2", "assignee_github": "Nazym-MU", "duplicate_of": "WAR-6", "should_ask": false }
+  },
+  {
+    "id": "R11",
+    "text": "when I upload a vertical photo of a dress it comes out rotated 90 degrees in my closet",
+    "expected": { "severity": "P3", "assignee_github": "Nazym-MU", "duplicate_of": "WAR-7", "should_ask": false }
+  },
+  {
+    "id": "R12",
+    "text": "I removed a shirt from my closet yesterday but it still shows up in the wardrobe view",
+    "expected": { "severity": "P3", "assignee_github": "Nazym-MU", "duplicate_of": "WAR-10", "should_ask": false }
+  },
+  {
+    "id": "R13",
+    "text": "the outfit generator keeps recommending clothes I already deleted from my wardrobe",
+    "expected": { "severity": "P2", "assignee_github": "aimanafza", "duplicate_of": "WAR-12", "should_ask": false }
+  },
+  {
+    "id": "R14",
+    "text": "AI outfit evaluation runs, the progress finishes, and then… nothing appears. no score, no text",
+    "expected": { "severity": "P3", "assignee_github": "aimanafza", "duplicate_of": "WAR-13", "should_ask": false }
+  },
+  {
+    "id": "R15",
+    "text": "adding an item with the chrome extension on any secure page makes the whole extension crash",
+    "expected": { "severity": "P1", "assignee_github": "Nazym-MU", "duplicate_of": "WAR-15", "should_ask": false }
+  },
+  {
+    "id": "R16",
+    "text": "multiple users report login fails with 'invalid credentials' on Chrome even right after a successful password reset",
+    "expected": { "severity": "P1", "assignee_github": "arinaalibayeva", "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R17",
+    "text": "swipe is broken",
+    "expected": { "severity": null, "assignee_github": null, "duplicate_of": null, "should_ask": true }
+  },
+  {
+    "id": "R18",
+    "text": "the app feels slow lately",
+    "expected": { "severity": null, "assignee_github": null, "duplicate_of": null, "should_ask": true }
+  },
+  {
+    "id": "R19",
+    "text": "something's wrong with my closet",
+    "expected": { "severity": null, "assignee_github": null, "duplicate_of": null, "should_ask": true }
+  },
+  {
+    "id": "R20",
+    "text": "purchase analysis shows nothing for me, the tab is just blank",
+    "expected": { "severity": "P3", "assignee_github": "aimanafza", "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R21",
+    "text": "the hero image on the marketing landing page is a broken 404",
+    "expected": { "severity": "P3", "assignee_github": null, "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R22",
+    "text": "docker compose build fails locally with an error about the references folder",
+    "expected": { "severity": "P3", "assignee_github": null, "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R23",
+    "text": "my entire wardrobe is EMPTY this morning — all 200 items gone, and two other people in the discord say the same thing happened to them",
+    "expected": { "severity": "P0", "assignee_github": "Nazym-MU", "duplicate_of": null, "should_ask": false }
+  },
+  {
+    "id": "R24",
+    "text": "nobody can sign in at all since this morning's deploy — every browser, every account, both new and existing users",
+    "expected": { "severity": "P0", "assignee_github": "arinaalibayeva", "duplicate_of": null, "should_ask": false }
   }
 ]

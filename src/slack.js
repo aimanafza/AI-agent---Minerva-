@@ -46,6 +46,17 @@ export async function fetchThread(thread_ts) {
   return data.messages || [];
 }
 
+// Reactions on a message (needs the reactions:read scope; caller should
+// tolerate a missing_scope error until the app is reinstalled with it).
+export async function getReactions(ts) {
+  const data = await slackApi("reactions.get", {
+    channel: config.slackChannel,
+    timestamp: ts,
+    full: true,
+  });
+  return (data.message?.reactions || []).map((r) => r.name);
+}
+
 export async function getBotUserId() {
   const data = await slackApi("auth.test", {});
   return data.user_id;
