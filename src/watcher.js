@@ -27,25 +27,37 @@ export async function sweep() {
   }
 
   // 2. Component heat
-  const weekAgo = now - 7 * 24 * 3600 * 1000;
+  await healthReport(issues, false);
+}
+
+// Component-health report. force=true (the !health command) reports the top
+// components regardless of threshold and repeats even if already pinged.
+export async function healthReport(issues = null, force = true) {
+  issues = issues || (await linear.recentIssues(100));
+  const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
   const counts = {};
   for (const i of issues) {
     if (new Date(i.createdAt).getTime() < weekAgo) continue;
     for (const label of i.labels) counts[label] = (counts[label] || 0) + 1;
   }
-  for (const [label, count] of Object.entries(counts)) {
-    if (count >= config.heatThreshold && !heatPinged.has(label)) {
-      heatPinged.add(label);
-      const assignees = issues
-        .filter((i) => i.labels.includes(label) && i.assignee)
-        .map((i) => i.assignee);
-      const top = mostCommon(assignees);
-      await slack.postMessage(
-        `:thermometer: Component health: *${label}* has produced ${count} bugs this week` +
-          (top ? `, ${assignees.filter((a) => a === top).length} assigned to ${top}` : "") +
-          `. Might be worth a look beyond individual tickets.`
-      );
-    }
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const hot = entries.filter(([label, count]) => (force ? count > 0 : count >= config.heatThreshold && !heatPinged.has(label)));
+
+  if (force && !hot.length) {
+    await slack.postMessage(":thermometer: Component health: no bugs filed in the last 7 days. Quiet week.");
+    return;
+  }
+  for (const [label, count] of hot.slice(0, force ? 3 : hot.length)) {
+    if (!force) heatPinged.add(label);
+    const assignees = issues
+      .filter((i) => i.labels.includes(label) && i.assignee)
+      .map((i) => i.assignee);
+    const top = mostCommon(assignees);
+    await slack.postMessage(
+      `:thermometer: Component health: *${label}* has produced ${count} bug${count === 1 ? "" : "s"} this week` +
+        (top ? `, ${assignees.filter((a) => a === top).length} assigned to ${top}` : "") +
+        (count >= config.heatThreshold ? `. Might be worth a look beyond individual tickets.` : ".")
+    );
   }
 }
 

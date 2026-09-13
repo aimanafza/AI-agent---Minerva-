@@ -2,7 +2,7 @@ import { config } from "./config.js";
 import * as slack from "./slack.js";
 import { triage, enforceGuardrails } from "./orchestrator.js";
 import { execute } from "./executor.js";
-import { sweep } from "./watcher.js";
+import { sweep, healthReport } from "./watcher.js";
 
 // Threads where we asked the reporter a follow-up and are waiting for an answer.
 const pendingQuestions = new Set();
@@ -78,6 +78,10 @@ async function main() {
         if (msg.ts > lastTs) lastTs = msg.ts;
         if (msg.user === botUserId || msg.bot_id) continue; // ignore ourselves
         if (msg.subtype) continue; // joins, edits, etc.
+        if (msg.text?.trim().toLowerCase() === "!health") {
+          await healthReport().catch((e) => console.error("health:", e.message));
+          continue;
+        }
         await handleReport(msg, botUserId).catch(async (e) => {
           console.error("triage failed:", e);
           await slack.postMessage(`:warning: Triage failed: ${e.message}`, msg.thread_ts || msg.ts);

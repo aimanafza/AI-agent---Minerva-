@@ -44,12 +44,11 @@ export async function execute(decision, { thread_ts, permalink, guardrailNotes }
   });
 
   const lines = [
-    `Filed as *${issue.identifier}*, ${decision.severity}, assigned to *${assigneeLabel}*.`,
+    `:white_check_mark: Filed as *<${issue.url}|${issue.identifier}>* — ${decision.severity}, assigned to *${assigneeLabel}*.`,
     decision.duplicate_of
-      ? `Possible duplicate of ${decision.duplicate_of} (${decision.duplicate_confidence} confidence) — linked in the ticket.`
+      ? `:link: Possible duplicate of *${decision.duplicate_of}* (${decision.duplicate_confidence} confidence) — noted in the ticket.`
       : null,
     ...(guardrailNotes || []),
-    issue.url,
   ].filter(Boolean);
 
   await slack.postMessage(lines.join("\n"), thread_ts);
