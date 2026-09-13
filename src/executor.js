@@ -4,8 +4,9 @@ import * as slack from "./slack.js";
 import { filedMessage, duplicateNotedMessage } from "./voice.js";
 
 // Takes a validated triage decision and performs the writes:
-// create the Linear ticket, then report back in the Slack thread.
-export async function execute(decision, { thread_ts, permalink, guardrailNotes }) {
+// create the Linear ticket (Slack entry point) or update the existing one
+// in place (direct-in-Linear entry point), then report back in the thread.
+export async function execute(decision, { thread_ts, permalink, guardrailNotes, updateIssue }) {
   let assigneeId = null;
   let assigneeLabel = "triage queue";
 
@@ -36,13 +37,24 @@ export async function execute(decision, { thread_ts, permalink, guardrailNotes }
     .filter(Boolean)
     .join("\n");
 
-  const issue = await linear.createIssue({
-    title: decision.title,
-    description,
-    severity: decision.severity,
-    assigneeId,
-    labels: decision.labels,
-  });
+  let issue;
+  if (updateIssue) {
+    issue = await linear.updateIssue({
+      id: updateIssue.id,
+      severity: decision.severity,
+      assigneeId,
+      labels: decision.labels,
+    });
+    await linear.addComment(updateIssue.id, `Triage (approved in Slack):\n\n${description}`).catch(() => {});
+  } else {
+    issue = await linear.createIssue({
+      title: decision.title,
+      description,
+      severity: decision.severity,
+      assigneeId,
+      labels: decision.labels,
+    });
+  }
 
   const lines = [
     filedMessage(issue, decision, assigneeLabel),

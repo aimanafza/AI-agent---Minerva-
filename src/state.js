@@ -39,12 +39,16 @@ export function loadWatcherState() {
   return {
     escalated: s.escalated || [],
     heatPinged: s.heatPinged || [],
+    // null (never seeded) is meaningful: first sweep seeds without triaging,
+    // so booting the bot doesn't storm an existing backlog.
+    linearSeen: s.linearSeen ?? null,
   };
 }
 
-export function saveWatcherState({ escalated, heatPinged }) {
+export function saveWatcherState({ escalated, heatPinged, linearSeen }) {
   writeFile({
     escalated: [...escalated],
     heatPinged: [...heatPinged],
+    ...(linearSeen ? { linearSeen: [...linearSeen] } : {}),
   });
 }

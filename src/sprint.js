@@ -63,3 +63,27 @@ End with: "React ✅ to adopt as the sprint draft, or reply with changes."`,
 
   return resp.content.find((b) => b.type === "text")?.text || "(no proposal generated)";
 }
+
+// Revise the current sprint plan from PM feedback in the thread — the
+// back-and-forth of a live planning session.
+export async function revisePlan(previousPlan, transcript) {
+  const resp = await anthropic.messages.create({
+    model: config.model,
+    max_tokens: 4000,
+    messages: [
+      {
+        role: "user",
+        content: `You are Mamdani, the team's PM agent, in a live sprint-planning conversation. Revise the sprint plan below according to the PM feedback from the thread. Keep everything they didn't ask to change.
+
+Current plan:
+${previousPlan}
+
+Thread so far (newest last):
+${transcript}
+
+Reply with the FULL revised plan in the same Slack mrkdwn format, under 3000 characters. First line: *Revised:* followed by a one-sentence summary of what changed. End with: "React ✅ to lock this sprint plan, or keep the feedback coming."`,
+      },
+    ],
+  });
+  return resp.content.find((b) => b.type === "text")?.text || previousPlan;
+}

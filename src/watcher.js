@@ -11,11 +11,32 @@ import { escalationMessage, quietWeekMessage, componentHealthMessage } from "./v
 const persistedWatcher = loadWatcherState();
 const escalated = new Set(persistedWatcher.escalated);
 const heatPinged = new Set(persistedWatcher.heatPinged);
-const persist = () => saveWatcherState({ escalated, heatPinged });
+let linearSeen = persistedWatcher.linearSeen === null ? null : new Set(persistedWatcher.linearSeen);
+const persist = () => saveWatcherState({ escalated, heatPinged, linearSeen });
 
+// A ticket created directly in Linear that nobody triaged: no assignee AND no
+// priority. (Mamdani's own tickets always get a priority, so they're excluded.)
+function isUntriaged(i) {
+  return i.priority === 0 && !i.assignee && i.stateType !== "completed" && i.stateType !== "canceled";
+}
+
+// Returns newly-detected untriaged Linear tickets for index.js to run through
+// the same propose->approve loop. First sweep seeds silently.
 export async function sweep() {
   const issues = await linear.recentIssues(100);
   const now = Date.now();
+
+  let newlyUntriaged = [];
+  if (linearSeen === null) {
+    linearSeen = new Set(issues.filter(isUntriaged).map((i) => i.identifier));
+    persist();
+  } else {
+    newlyUntriaged = issues.filter((i) => isUntriaged(i) && !linearSeen.has(i.identifier));
+    if (newlyUntriaged.length) {
+      for (const i of newlyUntriaged) linearSeen.add(i.identifier);
+      persist();
+    }
+  }
 
   // 1. Stale urgent issues
   for (const i of issues) {
@@ -32,6 +53,8 @@ export async function sweep() {
 
   // 2. Component heat
   await healthReport(issues, false);
+
+  return newlyUntriaged;
 }
 
 // Component-health report. force=true (the !health command) reports the top

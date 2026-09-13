@@ -42,6 +42,7 @@ export async function recentIssues(limit = 100) {
     { n: limit }
   );
   return data.issues.nodes.map((i) => ({
+    id: i.id,
     identifier: i.identifier,
     title: i.title,
     description: (i.description || "").slice(0, 300),
@@ -100,9 +101,57 @@ export function severityToPriority(sev) {
   return { P0: 1, P1: 1, P2: 2, P3: 3 }[sev] ?? 0;
 }
 
+// Approved tickets land in the Backlog workflow state; un-approved ones stay
+// in Triage so the team can still reference them.
+let backlogStateIdCache;
+export async function getBacklogStateId() {
+  if (backlogStateIdCache !== undefined) return backlogStateIdCache;
+  const teamId = await getTeamId();
+  const data = await gql(
+    `query($teamId: String!) { team(id: $teamId) { states { nodes { id name type } } } }`,
+    { teamId }
+  );
+  const backlog = data.team.states.nodes.find((s) => s.type === "backlog");
+  backlogStateIdCache = backlog?.id || null;
+  return backlogStateIdCache;
+}
+
+// Triage an EXISTING issue in place (the direct-in-Linear entry point).
+export async function updateIssue({ id, severity, assigneeId, labels }) {
+  const labelIds = await getOrCreateLabelIds(labels);
+  const stateId = await getBacklogStateId();
+  const data = await gql(
+    `mutation($id: String!, $input: IssueUpdateInput!) {
+      issueUpdate(id: $id, input: $input) {
+        success
+        issue { id identifier url }
+      }
+    }`,
+    {
+      id,
+      input: {
+        priority: severityToPriority(severity),
+        ...(assigneeId ? { assigneeId } : {}),
+        ...(labelIds.length ? { labelIds } : {}),
+        ...(stateId ? { stateId } : {}),
+      },
+    }
+  );
+  if (!data.issueUpdate.success) throw new Error("Linear issueUpdate failed");
+  return data.issueUpdate.issue;
+}
+
+export async function addComment(issueId, body) {
+  await gql(
+    `mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success } }`,
+    { input: { issueId, body } }
+  );
+}
+
 export async function createIssue({ title, description, severity, assigneeId, labels }) {
   const teamId = await getTeamId();
   const labelIds = await getOrCreateLabelIds(labels);
+  const stateId = await getBacklogStateId(); // approved at creation time -> straight to Backlog
   const data = await gql(
     `mutation($input: IssueCreateInput!) {
       issueCreate(input: $input) {
@@ -118,6 +167,7 @@ export async function createIssue({ title, description, severity, assigneeId, la
         priority: severityToPriority(severity),
         ...(assigneeId ? { assigneeId } : {}),
         ...(labelIds.length ? { labelIds } : {}),
+        ...(stateId ? { stateId } : {}),
       },
     }
   );

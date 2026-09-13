@@ -3,7 +3,11 @@ import * as slack from "./slack.js";
 import { triage, enforceGuardrails } from "./orchestrator.js";
 import { execute } from "./executor.js";
 import { sweep, healthReport } from "./watcher.js";
-import { sprintProposal } from "./sprint.js";
+import { sprintProposal, revisePlan } from "./sprint.js";
+
+// Live sprint-planning conversation: !sprint opens it, replies revise the
+// plan, ✅ (or an approve reply) locks it.
+let sprintSession = null; // { threadTs, planTs, plan, lastReplyTs }
 
 import { loadState, saveState } from "./state.js";
 import { onItMessage, followUpQuestionMessage, proposalMessage, rejectedMessage, triageFailedMessage } from "./voice.js";
@@ -61,13 +65,54 @@ async function handleReport(msg, botUserId) {
   console.log(`Filed ${issue.identifier} (${decision.severity}) -> ${decision.assignee_github || "triage queue"}`);
 }
 
+// Entry point 2: a ticket created directly in Linear (no assignee, no
+// priority). Same brain, same approval gate — but approval UPDATES the
+// existing ticket and moves it to Backlog instead of creating a new one.
+async function handleLinearTicket(issue) {
+  console.log(`\n--- Untriaged Linear ticket: ${issue.identifier} — ${issue.title}`);
+  const root = await slack.postMessage(
+    `:inbox_tray: New ticket created directly in Linear: *${issue.identifier} — ${issue.title}*. Triaging it now…`
+  );
+  const thread_ts = root.ts;
+  const report =
+    `Ticket created directly in Linear, currently untriaged (no assignee, no priority):\n` +
+    `${issue.identifier}: ${issue.title}\n${issue.description || "(no description)"}\n\n` +
+    `NOTE: ${issue.identifier} is this very ticket — never propose it as its own duplicate.`;
+
+  const result = await triage(report);
+  if (result.kind === "question") {
+    pendingQuestions.add(thread_ts);
+    persist();
+    await slack.postMessage(`:question: Before triaging ${issue.identifier}: ${result.question}`, thread_ts);
+    return;
+  }
+  const { decision, notes } = await enforceGuardrails(result.decision, result.trace, report);
+  const posted = await slack.postMessage(formatProposal(decision, notes), thread_ts);
+  pendingApprovals.set(thread_ts, {
+    decision,
+    notes,
+    proposalTs: posted.ts,
+    updateIssue: { id: issue.id, identifier: issue.identifier },
+  });
+  persist();
+  console.log(`Proposal posted for ${issue.identifier}, awaiting approval`);
+}
+
 async function main() {
   const botUserId = await slack.getBotUserId();
   let lastTs = String(Date.now() / 1000); // only react to messages after startup
   console.log(`triage-agent watching Slack channel ${config.slackChannel} (bot ${botUserId})`);
 
-  // Watcher: escalations + component health
-  setInterval(() => sweep().catch((e) => console.error("watcher:", e.message)), config.watchIntervalSec * 1000);
+  // Watcher: escalations + component health + untriaged-in-Linear detection
+  setInterval(() => {
+    sweep()
+      .then(async (untriaged) => {
+        for (const t of untriaged || []) {
+          await handleLinearTicket(t).catch((e) => console.error("linear-triage:", e.message));
+        }
+      })
+      .catch((e) => console.error("watcher:", e.message));
+  }, config.watchIntervalSec * 1000);
 
   // Ingest: poll the channel
   for (;;) {
@@ -83,9 +128,14 @@ async function main() {
         }
         if (msg.text?.trim().toLowerCase() === "!sprint") {
           await slack.postMessage(":calendar: Drafting a sprint proposal from the backlog and the handbook…");
-          await sprintProposal()
-            .then((plan) => slack.postMessage(plan))
-            .catch((e) => console.error("sprint:", e.message));
+          try {
+            const plan = await sprintProposal();
+            const posted = await slack.postMessage(plan);
+            sprintSession = { threadTs: posted.ts, planTs: posted.ts, plan, lastReplyTs: null };
+            console.log("Sprint session opened — replies in the thread revise the plan");
+          } catch (e) {
+            console.error("sprint:", e.message);
+          }
           continue;
         }
         await handleReport(msg, botUserId).catch(async (e) => {
@@ -120,8 +170,12 @@ async function main() {
         if (verdict === "approve") {
           pendingApprovals.delete(t);
           persist();
-          const issue = await execute(pending.decision, { thread_ts: t, guardrailNotes: pending.notes });
-          console.log(`Approved and filed ${issue.identifier}`);
+          const issue = await execute(pending.decision, {
+            thread_ts: t,
+            guardrailNotes: pending.notes,
+            updateIssue: pending.updateIssue,
+          });
+          console.log(`Approved and ${pending.updateIssue ? "updated" : "filed"} ${issue.identifier}`);
         } else if (verdict === "reject") {
           pendingApprovals.delete(t);
           persist();
@@ -129,6 +183,44 @@ async function main() {
           console.log(`Rejected: ${pending.decision.title}`);
         }
         // anything else in the thread: keep waiting
+      }
+
+      // Live sprint-planning session: replies revise the plan, ✅/approve locks it.
+      if (sprintSession) {
+        try {
+          const replies = await slack.fetchThread(sprintSession.threadTs);
+          const last = replies[replies.length - 1];
+          let lock = false;
+          try {
+            const reactions = await slack.getReactions(sprintSession.planTs);
+            if (reactions.some((r) => APPROVE_REACTIONS.has(r))) lock = true;
+          } catch {
+            // reactions scope missing — reply-based lock still works
+          }
+          if (!lock && last && last.user !== botUserId && !last.bot_id && last.ts !== sprintSession.lastReplyTs) {
+            if (APPROVE_TEXT.test((last.text || "").trim())) {
+              lock = true;
+            } else {
+              sprintSession.lastReplyTs = last.ts;
+              const transcript = replies
+                .filter((m) => m.ts !== sprintSession.threadTs)
+                .map((m) => `${m.user === botUserId ? "mamdani" : "pm"}: ${m.text}`)
+                .join("\n");
+              const revised = await revisePlan(sprintSession.plan, transcript);
+              const postedRev = await slack.postMessage(revised, sprintSession.threadTs);
+              sprintSession.plan = revised;
+              sprintSession.planTs = postedRev.ts;
+              console.log("Sprint plan revised from thread feedback");
+            }
+          }
+          if (lock) {
+            await slack.postMessage(":lock: Sprint plan locked — final version above. See you Monday.", sprintSession.threadTs);
+            sprintSession = null;
+            console.log("Sprint session locked");
+          }
+        } catch (e) {
+          console.error("sprint-session:", e.message);
+        }
       }
 
       // Also poll threads awaiting reporter answers
